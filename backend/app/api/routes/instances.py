@@ -61,6 +61,21 @@ async def start_workflow_instance(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
 
 
+@router.get("/workflows/{workflow_id}/instances", response_model=list[WorkflowInstanceRead])
+async def list_workflow_instances(
+    organization_id: str,
+    workflow_id: str,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowInstanceService, Depends(instance_service)],
+) -> list[WorkflowInstanceRead]:
+    try:
+        return await service.list_for_workflow(organization_id, workflow_id, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+    except WorkflowInstanceNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
+
+
 @router.get("/instances/{instance_id}", response_model=WorkflowInstanceRead)
 async def get_workflow_instance(
     organization_id: str,

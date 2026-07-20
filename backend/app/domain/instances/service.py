@@ -73,6 +73,20 @@ class WorkflowInstanceService:
         instance = await self._get_for_organization(organization_id, instance_id, user)
         return self._read_instance(instance)
 
+    async def list_for_workflow(
+        self,
+        organization_id: str,
+        workflow_id: str,
+        user: User,
+    ) -> list[WorkflowInstanceRead]:
+        await self._ensure_membership(organization_id, user)
+        workflow = await self.workflows.get_by_id(workflow_id)
+        if not workflow or workflow.organization_id != organization_id:
+            raise WorkflowInstanceNotFoundError
+
+        instances = await self.instances.list_by_workflow(organization_id, workflow_id)
+        return [self._read_instance(instance) for instance in instances]
+
     async def list_events(
         self,
         organization_id: str,

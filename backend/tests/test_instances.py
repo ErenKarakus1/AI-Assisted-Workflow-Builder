@@ -213,6 +213,30 @@ def test_instance_events_are_append_only_timeline(client: TestClient) -> None:
     assert response.json()[3]["data"] == {"result": False, "branch": "false"}
 
 
+def test_list_workflow_instances(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    workflow_id = create_and_activate_workflow(client, token, org_id, simple_workflow_payload())
+    client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}/instances",
+        json={"input": {"amount": 1}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}/instances",
+        json={"input": {"amount": 2}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = client.get(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}/instances",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+    assert {instance["input"]["amount"] for instance in response.json()} == {1, 2}
+
+
 def test_cannot_start_draft_workflow(client: TestClient) -> None:
     token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
     workflow_response = client.post(

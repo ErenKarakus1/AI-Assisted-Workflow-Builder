@@ -74,3 +74,27 @@ export type Task = {
   completed_by_user_id: string | null;
   revision: number;
 };
+
+export type WorkflowInstanceStatus = "running" | "completed" | "failed" | "waiting";
+
+export type WorkflowInstance = {
+  id: string;
+  organization_id: string;
+  workflow_id: string;
+  workflow_revision: number;
+  status: WorkflowInstanceStatus;
+  active_node_id: string | null;
+  context: Record<string, unknown>;
+  input: Record<string, unknown>;
+  revision: number;
+};
+
+export type InstanceEvent = {
+  id: string;
+  organization_id: string;
+  instance_id: string;
+  workflow_id: string;
+  type: string;
+  node_id: string | null;
+  data: Record<string, unknown>;
+};

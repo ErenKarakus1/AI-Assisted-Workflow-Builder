@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { listInstanceEvents, listWorkflowInstances, startWorkflowInstance } from "../../api/instances";
 import {
   activateWorkflow,
   deactivateWorkflow,
@@ -10,16 +12,35 @@ import {
   validateWorkflowDraft,
 } from "../../api/workflows";
 import { errorMessage } from "../../lib/errors";
-import type { WorkflowEdge, WorkflowNode, WorkflowValidationResult } from "../../types/api";
+import type {
+  InstanceEvent,
+  WorkflowEdge,
+  WorkflowInstance,
+  WorkflowNode,
+  WorkflowValidationResult,
+} from "../../types/api";
 import { WorkflowGraphEditor } from "./WorkflowGraphEditor";
 
 export function WorkflowDetailPage() {
   const { organizationId = "", workflowId = "" } = useParams();
   const queryClient = useQueryClient();
+  const [instanceInput, setInstanceInput] = useState("{}");
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
   const workflowQuery = useQuery({
     queryKey: ["workflow", organizationId, workflowId],
     queryFn: () => getWorkflow(organizationId, workflowId),
     enabled: Boolean(organizationId && workflowId),
+  });
+  const instancesQuery = useQuery({
+    queryKey: ["workflow-instances", organizationId, workflowId],
+    queryFn: () => listWorkflowInstances(organizationId, workflowId),
+    enabled: Boolean(organizationId && workflowId),
+  });
+  const effectiveSelectedInstanceId = selectedInstanceId ?? instancesQuery.data?.[0]?.id ?? null;
+  const eventsQuery = useQuery({
+    queryKey: ["instance-events", organizationId, effectiveSelectedInstanceId],
+    queryFn: () => listInstanceEvents(organizationId, effectiveSelectedInstanceId ?? ""),
+    enabled: Boolean(organizationId && effectiveSelectedInstanceId),
   });
   const validateMutation = useMutation({
     mutationFn: () => validateWorkflow(organizationId, workflowId),
@@ -60,8 +81,20 @@ export function WorkflowDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ["workflows", organizationId] });
     },
   });
+  const startInstanceMutation = useMutation({
+    mutationFn: () => startWorkflowInstance(organizationId, workflowId, parseJsonObject(instanceInput)),
+    onSuccess: async (instance) => {
+      setSelectedInstanceId(instance.id);
+      await queryClient.invalidateQueries({ queryKey: ["workflow-instances", organizationId, workflowId] });
+      await queryClient.invalidateQueries({ queryKey: ["tasks", organizationId] });
+    },
+  });
 
   const workflow = workflowQuery.data;
+  const selectedInstance =
+    instancesQuery.data?.find((instance) => instance.id === effectiveSelectedInstanceId) ??
+    startInstanceMutation.data ??
+    null;
 
   return (
     <section className="page-stack">
@@ -159,6 +192,21 @@ export function WorkflowDetailPage() {
             onValidateDraft={(nodes, edges) => validateDraftMutation.mutate({ nodes, edges })}
           />
 
+          <InstanceRunner
+            workflowStatus={workflow.status}
+            input={instanceInput}
+            onInputChange={setInstanceInput}
+            isStarting={startInstanceMutation.isPending}
+            startError={startInstanceMutation.error}
+            onStart={() => startInstanceMutation.mutate()}
+            instances={instancesQuery.data ?? []}
+            selectedInstance={selectedInstance}
+            selectedInstanceId={selectedInstanceId}
+            onSelectInstance={setSelectedInstanceId}
+            events={eventsQuery.data ?? []}
+            areEventsLoading={eventsQuery.isLoading}
+          />
+
           <div className="split-panel">
             <GraphList title="Nodes" items={workflow.nodes.map((node) => `${node.id} - ${node.type}`)} />
             <GraphList
@@ -171,6 +219,139 @@ export function WorkflowDetailPage() {
         </>
       ) : null}
     </section>
+  );
+}
+
+function InstanceRunner({
+  workflowStatus,
+  input,
+  onInputChange,
+  isStarting,
+  startError,
+  onStart,
+  instances,
+  selectedInstance,
+  selectedInstanceId,
+  onSelectInstance,
+  events,
+  areEventsLoading,
+}: {
+  workflowStatus: string;
+  input: string;
+  onInputChange: (value: string) => void;
+  isStarting: boolean;
+  startError: unknown;
+  onStart: () => void;
+  instances: WorkflowInstance[];
+  selectedInstance: WorkflowInstance | null;
+  selectedInstanceId: string | null;
+  onSelectInstance: (id: string) => void;
+  events: InstanceEvent[];
+  areEventsLoading: boolean;
+}) {
+  const inputError = parseJsonObjectError(input);
+  const canStart = workflowStatus === "active" && !isStarting && !inputError;
+
+  return (
+    <section className="runner-panel">
+      <div className="editor-toolbar">
+        <div>
+          <strong>Run workflow</strong>
+          <span>{workflowStatus === "active" ? "Start a new instance" : "Activate workflow before running"}</span>
+        </div>
+        <button className="button" type="button" disabled={!canStart} onClick={onStart}>
+          {isStarting ? "Starting..." : "Start instance"}
+        </button>
+      </div>
+
+      <div className="runner-grid">
+        <div className="config-stack">
+          <label>
+            Input JSON
+            <textarea
+              value={input}
+              disabled={workflowStatus !== "active"}
+              rows={8}
+              onChange={(event) => onInputChange(event.target.value)}
+            />
+          </label>
+          {inputError ? <p className="field-error">{inputError}</p> : null}
+          {startError ? (
+            <p className="form-error">{errorMessage(startError, "Workflow instance could not be started.")}</p>
+          ) : null}
+        </div>
+
+        <div className="list-panel">
+          <div className="panel-heading">Instances</div>
+          {instances.length ? (
+            instances.map((instance) => (
+              <button
+                className={
+                  instance.id === (selectedInstanceId ?? selectedInstance?.id)
+                    ? "compact-row compact-row--button active"
+                    : "compact-row compact-row--button"
+                }
+                key={instance.id}
+                type="button"
+                onClick={() => onSelectInstance(instance.id)}
+              >
+                <strong>{instance.status}</strong>
+                <span>
+                  {instance.id} - rev {instance.workflow_revision}
+                </span>
+              </button>
+            ))
+          ) : (
+            <p className="muted">No instances yet.</p>
+          )}
+        </div>
+      </div>
+
+      {selectedInstance ? (
+        <div className="split-panel">
+          <article className="list-panel">
+            <div className="panel-heading">Selected instance</div>
+            <div className="compact-row">
+              <strong>{selectedInstance.status}</strong>
+              <span>ID: {selectedInstance.id}</span>
+              <span>Active node: {selectedInstance.active_node_id ?? "none"}</span>
+              {selectedInstance.status === "waiting" ? (
+                <Link className="text-link" to="/tasks">
+                  Review approval tasks
+                </Link>
+              ) : null}
+            </div>
+            <JsonBlock title="Input" value={selectedInstance.input} />
+            <JsonBlock title="Context" value={selectedInstance.context} />
+          </article>
+
+          <article className="list-panel">
+            <div className="panel-heading">Event timeline</div>
+            {areEventsLoading ? <p className="muted">Loading events...</p> : null}
+            {events.length ? (
+              events.map((event) => (
+                <div className="compact-row" key={event.id}>
+                  <strong>{event.type}</strong>
+                  <span>{event.node_id ? `Node: ${event.node_id}` : "Workflow event"}</span>
+                  {Object.keys(event.data).length ? <code>{JSON.stringify(event.data)}</code> : null}
+                </div>
+              ))
+            ) : !areEventsLoading ? (
+              <p className="muted">No events recorded yet.</p>
+            ) : null}
+          </article>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function JsonBlock({ title, value }: { title: string; value: Record<string, unknown> }) {
+  return (
+    <div className="compact-row">
+      <strong>{title}</strong>
+      <pre>{JSON.stringify(value, null, 2)}</pre>
+    </div>
   );
 }
 
@@ -211,6 +392,23 @@ function stringValue(value: unknown): string {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
     ? String(value)
     : "";
+}
+
+function parseJsonObject(value: string): Record<string, unknown> {
+  const parsed = JSON.parse(value) as unknown;
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+    throw new Error("Input must be a JSON object");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function parseJsonObjectError(value: string): string | null {
+  try {
+    parseJsonObject(value);
+    return null;
+  } catch {
+    return "Input must be valid JSON object, like { \"amount\": 1000 }";
+  }
 }
 
 function GraphList({ title, items }: { title: string; items: string[] }) {

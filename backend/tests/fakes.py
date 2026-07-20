@@ -100,6 +100,13 @@ class InMemoryWorkflowInstanceRepository(WorkflowInstanceRepository):
     async def get_by_id(self, instance_id: str) -> WorkflowInstance | None:
         return self.instances_by_id.get(instance_id)
 
+    async def list_by_workflow(self, organization_id: str, workflow_id: str) -> list[WorkflowInstance]:
+        return [
+            instance
+            for instance in self.instances_by_id.values()
+            if instance.organization_id == organization_id and instance.workflow_id == workflow_id
+        ]
+
     async def update(self, instance: WorkflowInstance) -> WorkflowInstance:
         self.instances_by_id[instance.id] = instance
         return instance

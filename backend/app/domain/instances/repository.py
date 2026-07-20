@@ -15,6 +15,10 @@ class WorkflowInstanceRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def list_by_workflow(self, organization_id: str, workflow_id: str) -> list[WorkflowInstance]:
+        raise NotImplementedError
+
+    @abstractmethod
     async def update(self, instance: WorkflowInstance) -> WorkflowInstance:
         raise NotImplementedError
 
@@ -41,6 +45,13 @@ class MongoWorkflowInstanceRepository(WorkflowInstanceRepository):
         document = await self.collection.find_one({"id": instance_id})
         return WorkflowInstance(**document) if document else None
 
+    async def list_by_workflow(self, organization_id: str, workflow_id: str) -> list[WorkflowInstance]:
+        cursor = self.collection.find(
+            {"organization_id": organization_id, "workflow_id": workflow_id}
+        ).sort("started_at", -1)
+        documents = await cursor.to_list(length=None)
+        return [WorkflowInstance(**document) for document in documents]
+
     async def update(self, instance: WorkflowInstance) -> WorkflowInstance:
         await self.collection.replace_one({"id": instance.id}, instance.model_dump())
         return instance
@@ -58,4 +69,3 @@ class MongoInstanceEventRepository(InstanceEventRepository):
         cursor = self.collection.find({"instance_id": instance_id}).sort("created_at", 1)
         documents = await cursor.to_list(length=None)
         return [InstanceEvent(**document) for document in documents]
-
