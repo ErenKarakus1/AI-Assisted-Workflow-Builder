@@ -1,9 +1,10 @@
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { activateWorkflow, getWorkflow, validateWorkflow } from "../../api/workflows";
+import { activateWorkflow, getWorkflow, updateWorkflow, validateWorkflow } from "../../api/workflows";
 import { errorMessage } from "../../lib/errors";
-import type { WorkflowValidationResult } from "../../types/api";
+import type { WorkflowEdge, WorkflowNode, WorkflowValidationResult } from "../../types/api";
+import { WorkflowGraphEditor } from "./WorkflowGraphEditor";
 
 export function WorkflowDetailPage() {
   const { organizationId = "", workflowId = "" } = useParams();
@@ -18,6 +19,19 @@ export function WorkflowDetailPage() {
   });
   const activateMutation = useMutation({
     mutationFn: () => activateWorkflow(organizationId, workflowId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["workflow", organizationId, workflowId] });
+      await queryClient.invalidateQueries({ queryKey: ["workflows", organizationId] });
+    },
+  });
+  const saveMutation = useMutation({
+    mutationFn: ({ nodes, edges }: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }) => {
+      if (!workflowQuery.data) {
+        throw new Error("Workflow is not loaded");
+      }
+
+      return updateWorkflow({ ...workflowQuery.data, nodes, edges });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["workflow", organizationId, workflowId] });
       await queryClient.invalidateQueries({ queryKey: ["workflows", organizationId] });
@@ -85,6 +99,16 @@ export function WorkflowDetailPage() {
               {errorMessage(activateMutation.error, "Workflow could not be activated.")}
             </p>
           ) : null}
+          {saveMutation.isError ? (
+            <p className="form-error">{errorMessage(saveMutation.error, "Workflow graph could not be saved.")}</p>
+          ) : null}
+          {saveMutation.isSuccess ? <p className="success-panel">Graph saved.</p> : null}
+
+          <WorkflowGraphEditor
+            workflow={workflow}
+            isSaving={saveMutation.isPending}
+            onSave={(nodes, edges) => saveMutation.mutate({ nodes, edges })}
+          />
 
           <div className="split-panel">
             <GraphList title="Nodes" items={workflow.nodes.map((node) => `${node.id} - ${node.type}`)} />

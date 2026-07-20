@@ -44,3 +44,15 @@ export function activateWorkflow(organizationId: string, workflowId: string): Pr
     method: "POST",
   });
 }
+
+export function updateWorkflow(workflow: Workflow): Promise<Workflow> {
+  return apiRequest<Workflow>(`/api/orgs/${workflow.organization_id}/workflows/${workflow.id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      name: workflow.name,
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      revision: workflow.revision,
+    }),
+  });
+}
