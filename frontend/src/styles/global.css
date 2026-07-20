@@ -641,6 +641,27 @@ textarea {
   height: 520px;
 }
 
+.flow-canvas,
+.flow-canvas .react-flow,
+.flow-canvas .react-flow__renderer,
+.flow-canvas .react-flow__pane {
+  cursor: default;
+}
+
+.flow-canvas .react-flow__pane.draggable {
+  cursor: grab;
+}
+
+.flow-canvas .react-flow__pane.dragging {
+  cursor: grabbing;
+}
+
+.flow-canvas .react-flow__node,
+.flow-canvas .react-flow__edge,
+.flow-canvas .react-flow__handle {
+  cursor: pointer;
+}
+
 .config-panel {
   border-left: 1px solid #edf1f6;
   background: #fbfcfe;
