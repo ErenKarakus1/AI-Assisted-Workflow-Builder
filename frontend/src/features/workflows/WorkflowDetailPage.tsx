@@ -50,7 +50,7 @@ export function WorkflowDetailPage() {
     queryKey: ["organizations"],
     queryFn: listOrganizations,
   });
-  const effectiveSelectedInstanceId = selectedInstanceId ?? instancesQuery.data?.[0]?.id ?? null;
+  const effectiveSelectedInstanceId = selectedInstanceId;
   const eventsQuery = useQuery({
     queryKey: ["instance-events", organizationId, effectiveSelectedInstanceId],
     queryFn: () => listInstanceEvents(organizationId, effectiveSelectedInstanceId ?? ""),
@@ -469,6 +469,8 @@ function InstanceRunner({
             ) : null}
           </article>
         </div>
+      ) : instances.length ? (
+        <p className="help-panel">Select an instance from the list to view its details and event timeline.</p>
       ) : null}
     </section>
   );

@@ -100,10 +100,12 @@ def register_login_create_org(client: TestClient, email: str) -> tuple[str, str,
     return token, org_response.json()["id"], register_response.json()["id"]
 
 
-def approval_workflow_payload(assigned_user_id: str | None = None) -> dict:
+def approval_workflow_payload(assigned_user_id: str | None = None, assigned_role: str | None = None) -> dict:
     data = {}
     if assigned_user_id:
         data["assigned_user_id"] = assigned_user_id
+    if assigned_role:
+        data["assigned_role"] = assigned_role
     return {
         "name": "Approval Flow",
         "nodes": [
@@ -263,3 +265,76 @@ def test_task_assigned_to_another_user_is_forbidden(client: TestClient) -> None:
     )
 
     assert response.status_code == 403
+
+
+def test_member_task_list_only_shows_matching_user_or_role_tasks(client: TestClient) -> None:
+    owner_token, org_id, owner_id = register_login_create_org(client, "owner@example.com")
+    member_register = client.post(
+        "/api/auth/register",
+        json={
+            "email": "member@example.com",
+            "password": "correct-horse-battery",
+            "full_name": "Member User",
+        },
+    )
+    other_register = client.post(
+        "/api/auth/register",
+        json={
+            "email": "other@example.com",
+            "password": "correct-horse-battery",
+            "full_name": "Other User",
+        },
+    )
+    member_login = client.post(
+        "/api/auth/login",
+        json={"email": "member@example.com", "password": "correct-horse-battery"},
+    )
+    client.post(
+        f"/api/orgs/{org_id}/members",
+        json={"email": "member@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    client.post(
+        f"/api/orgs/{org_id}/members",
+        json={"email": "other@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    create_activate_start(client, owner_token, org_id, approval_workflow_payload(member_register.json()["id"]))
+    create_activate_start(client, owner_token, org_id, approval_workflow_payload(other_register.json()["id"]))
+    create_activate_start(client, owner_token, org_id, approval_workflow_payload(assigned_role="member"))
+    create_activate_start(client, owner_token, org_id, approval_workflow_payload(owner_id))
+
+    response = client.get(
+        f"/api/orgs/{org_id}/tasks",
+        headers={"Authorization": f"Bearer {member_login.json()['access_token']}"},
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+    assert {task["assigned_user_id"] for task in response.json()} == {member_register.json()["id"], None}
+    assert {task["assigned_role"] for task in response.json()} == {"member", None}
+
+
+def test_owner_task_list_shows_all_org_tasks(client: TestClient) -> None:
+    owner_token, org_id, owner_id = register_login_create_org(client, "owner@example.com")
+    member_register = client.post(
+        "/api/auth/register",
+        json={
+            "email": "member@example.com",
+            "password": "correct-horse-battery",
+            "full_name": "Member User",
+        },
+    )
+    client.post(
+        f"/api/orgs/{org_id}/members",
+        json={"email": "member@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    create_activate_start(client, owner_token, org_id, approval_workflow_payload(member_register.json()["id"]))
+    create_activate_start(client, owner_token, org_id, approval_workflow_payload(assigned_role="member"))
+    create_activate_start(client, owner_token, org_id, approval_workflow_payload(owner_id))
+
+    response = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {owner_token}"})
+
+    assert response.status_code == 200
+    assert len(response.json()) == 3

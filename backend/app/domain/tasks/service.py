@@ -8,6 +8,7 @@ from app.domain.tasks.repository import TaskRepository
 from app.domain.workflows.repository import WorkflowRepository
 from app.engine.runner import WorkflowEngine
 from app.models.instance import InstanceEvent, InstanceEventType, WorkflowInstanceStatus
+from app.models.organization import OrganizationRole
 from app.models.task import Task, TaskDecision, TaskStatus
 from app.models.user import User
 from app.schemas.task import TaskRead
@@ -43,8 +44,11 @@ class TaskService:
         self.jobs = jobs
 
     async def list_for_org(self, organization_id: str, user: User) -> list[TaskRead]:
-        await self._ensure_membership(organization_id, user)
-        return [self._read(task) for task in await self.tasks.list_by_organization(organization_id)]
+        membership = await self._get_membership(organization_id, user)
+        tasks = await self.tasks.list_by_organization(organization_id)
+        if membership.role not in {OrganizationRole.OWNER, OrganizationRole.ADMIN}:
+            tasks = [task for task in tasks if self._is_task_visible_to_member(task, user.id, membership.role)]
+        return [self._read(task) for task in tasks]
 
     async def get(self, organization_id: str, task_id: str, user: User) -> TaskRead:
         task = await self._get_for_org(organization_id, task_id, user)
@@ -119,9 +123,20 @@ class TaskService:
         return task
 
     async def _ensure_membership(self, organization_id: str, user: User) -> None:
+        await self._get_membership(organization_id, user)
+
+    async def _get_membership(self, organization_id: str, user: User):
         membership = await self.members.get_by_user_and_org(user.id, organization_id)
         if not membership:
             raise OrganizationAccessDeniedError
+        return membership
+
+    def _is_task_visible_to_member(self, task: Task, user_id: str, role: OrganizationRole) -> bool:
+        if task.assigned_user_id:
+            return task.assigned_user_id == user_id
+        if task.assigned_role:
+            return task.assigned_role == role
+        return False
 
     def _read(self, task: Task) -> TaskRead:
         return TaskRead(

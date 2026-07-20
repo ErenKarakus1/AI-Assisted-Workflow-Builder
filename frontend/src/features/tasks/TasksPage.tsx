@@ -64,6 +64,7 @@ export function TasksPage() {
     () => new Map((workflowsQuery.data ?? []).map((workflow) => [workflow.id, workflow])),
     [workflowsQuery.data],
   );
+  const canSeeAllTasks = selectedOrg?.role === "owner" || selectedOrg?.role === "admin";
 
   return (
     <section className="page-stack">
@@ -91,8 +92,8 @@ export function TasksPage() {
       {organizationId ? (
         <>
           <TaskList
-            title="Pending approvals"
-            emptyText={tasksQuery.isLoading ? "Loading tasks..." : "No pending approval tasks."}
+            title={canSeeAllTasks ? "Pending approvals" : "My pending approvals"}
+            emptyText={tasksQuery.isLoading ? "Loading tasks..." : "No pending approval tasks for you."}
             tasks={pendingTasks}
             workflowsById={workflowsById}
             members={membersQuery.data ?? []}
@@ -103,7 +104,7 @@ export function TasksPage() {
             onReject={(task) => rejectMutation.mutate(task)}
           />
           <TaskList
-            title="Completed approvals"
+            title={canSeeAllTasks ? "Completed approvals" : "My completed approvals"}
             emptyText="No completed approval tasks yet."
             tasks={completedTasks}
             workflowsById={workflowsById}
