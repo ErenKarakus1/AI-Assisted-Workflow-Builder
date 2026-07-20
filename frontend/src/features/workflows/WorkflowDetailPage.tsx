@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -95,6 +95,18 @@ export function WorkflowDetailPage() {
   useAutoResetMutation(validateDraftMutation.isError, validateDraftMutation.reset);
   useAutoResetMutation(saveMutation.isError || saveMutation.isSuccess, saveMutation.reset);
   useAutoResetMutation(startInstanceMutation.isError, startInstanceMutation.reset);
+  useAutoResetMutation(Boolean(validateMutation.data?.is_valid), validateMutation.reset);
+  useAutoResetMutation(Boolean(validateDraftMutation.data?.is_valid), validateDraftMutation.reset);
+
+  const resetValidate = validateMutation.reset;
+  const resetValidateDraft = validateDraftMutation.reset;
+  const handleDirtyChange = useCallback((isDirty: boolean) => {
+    setHasUnsavedGraphChanges(isDirty);
+    if (isDirty) {
+      resetValidate();
+      resetValidateDraft();
+    }
+  }, [resetValidate, resetValidateDraft]);
 
   const workflow = workflowQuery.data;
   const selectedInstance =
@@ -204,7 +216,7 @@ export function WorkflowDetailPage() {
             onSave={(nodes, edges) => saveMutation.mutate({ nodes, edges })}
             isValidatingDraft={validateDraftMutation.isPending}
             onValidateDraft={(nodes, edges) => validateDraftMutation.mutate({ nodes, edges })}
-            onDirtyChange={setHasUnsavedGraphChanges}
+            onDirtyChange={handleDirtyChange}
             selectedInstance={selectedInstance}
             instanceEvents={eventsQuery.data ?? []}
           />
