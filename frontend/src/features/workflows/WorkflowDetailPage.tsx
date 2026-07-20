@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -90,6 +90,11 @@ export function WorkflowDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ["tasks", organizationId] });
     },
   });
+  useAutoResetMutation(activateMutation.isError, activateMutation.reset);
+  useAutoResetMutation(deactivateMutation.isError, deactivateMutation.reset);
+  useAutoResetMutation(validateDraftMutation.isError, validateDraftMutation.reset);
+  useAutoResetMutation(saveMutation.isError || saveMutation.isSuccess, saveMutation.reset);
+  useAutoResetMutation(startInstanceMutation.isError, startInstanceMutation.reset);
 
   const workflow = workflowQuery.data;
   const selectedInstance =
@@ -479,4 +484,15 @@ function GraphList({ title, items }: { title: string; items: string[] }) {
       )}
     </article>
   );
+}
+
+function useAutoResetMutation(shouldReset: boolean, reset: () => void) {
+  useEffect(() => {
+    if (!shouldReset) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(reset, 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [reset, shouldReset]);
 }
