@@ -7,9 +7,11 @@ import { approveTask, listTasks, rejectTask } from "../../api/tasks";
 import { listWorkflows } from "../../api/workflows";
 import { errorMessage } from "../../lib/errors";
 import type { OrganizationMember, Task, Workflow } from "../../types/api";
+import { useAuth } from "../auth/AuthProvider";
 
 export function TasksPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const organizationsQuery = useQuery({
     queryKey: ["organizations"],
     queryFn: listOrganizations,
@@ -100,6 +102,7 @@ export function TasksPage() {
             activeTaskId={activeTaskId}
             isDeciding={approveMutation.isPending || rejectMutation.isPending}
             showActions
+            isTaskActionable={(task) => isTaskActionable(task, user?.id, selectedOrg?.role)}
             onApprove={(task) => approveMutation.mutate(task)}
             onReject={(task) => rejectMutation.mutate(task)}
           />
@@ -112,6 +115,7 @@ export function TasksPage() {
             activeTaskId={activeTaskId}
             isDeciding={false}
             showActions={false}
+            isTaskActionable={() => false}
             onApprove={() => undefined}
             onReject={() => undefined}
           />
@@ -132,6 +136,7 @@ function TaskList({
   activeTaskId,
   isDeciding,
   showActions,
+  isTaskActionable,
   onApprove,
   onReject,
 }: {
@@ -143,6 +148,7 @@ function TaskList({
   activeTaskId: string | null;
   isDeciding: boolean;
   showActions: boolean;
+  isTaskActionable: (task: Task) => boolean;
   onApprove: (task: Task) => void;
   onReject: (task: Task) => void;
 }) {
@@ -165,7 +171,7 @@ function TaskList({
               <Link className="text-link" to={`/workflows/${task.organization_id}/${task.workflow_id}`}>
                 Open workflow
               </Link>
-              {showActions ? (
+              {showActions && isTaskActionable(task) ? (
                 <>
                   <button
                     className="button"
@@ -184,6 +190,8 @@ function TaskList({
                     Reject
                   </button>
                 </>
+              ) : showActions ? (
+                <span className="muted">Visible for oversight</span>
               ) : null}
             </div>
           </div>
@@ -215,6 +223,19 @@ function assignmentLabel(task: Task, members: OrganizationMember[]): string {
     return `Assigned to ${humanize(task.assigned_role)} role`;
   }
   return "Unassigned";
+}
+
+function isTaskActionable(task: Task, userId: string | undefined, role: string | undefined): boolean {
+  if (!userId || task.status !== "pending") {
+    return false;
+  }
+  if (task.assigned_user_id) {
+    return task.assigned_user_id === userId;
+  }
+  if (task.assigned_role) {
+    return task.assigned_role === role;
+  }
+  return false;
 }
 
 function memberLabel(member: OrganizationMember): string {
