@@ -1,0 +1,19 @@
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    app_name: str = "AI-Assisted Workflow Builder API"
+    app_version: str = "0.1.0"
+    environment: str = "development"
+    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+
+    mongodb_url: str = "mongodb://localhost:27017"
+    mongodb_database: str = "workflow_builder"
+    redis_url: str = "redis://localhost:6379/0"
+
+
+settings = Settings()
+
