@@ -7,6 +7,7 @@ import { AuthProvider } from "../features/auth/AuthProvider";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { OrganizationsPage } from "../features/orgs/OrganizationsPage";
 import { TasksPage } from "../features/tasks/TasksPage";
+import { WorkflowDetailPage } from "../features/workflows/WorkflowDetailPage";
 import { WorkflowsPage } from "../features/workflows/WorkflowsPage";
 import { ProtectedRoute } from "../routes/ProtectedRoute";
 
@@ -21,6 +22,7 @@ export function App() {
             <Route index element={<DashboardPage />} />
             <Route path="/organizations" element={<OrganizationsPage />} />
             <Route path="/workflows" element={<WorkflowsPage />} />
+            <Route path="/workflows/:organizationId/:workflowId" element={<WorkflowDetailPage />} />
             <Route path="/tasks" element={<TasksPage />} />
           </Route>
         </Route>

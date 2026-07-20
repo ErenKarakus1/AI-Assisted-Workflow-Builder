@@ -1,5 +1,5 @@
 import { apiRequest } from "./client";
-import type { Workflow } from "../types/api";
+import type { Workflow, WorkflowValidationResult } from "../types/api";
 
 const starterNodes = [
   { id: "start-1", type: "start", position: { x: 0, y: 0 }, data: {} },
@@ -14,6 +14,10 @@ export function listWorkflows(organizationId: string): Promise<Workflow[]> {
   return apiRequest<Workflow[]>(`/api/orgs/${organizationId}/workflows`);
 }
 
+export function getWorkflow(organizationId: string, workflowId: string): Promise<Workflow> {
+  return apiRequest<Workflow>(`/api/orgs/${organizationId}/workflows/${workflowId}`);
+}
+
 export function createWorkflow(organizationId: string, name: string): Promise<Workflow> {
   return apiRequest<Workflow>(`/api/orgs/${organizationId}/workflows`, {
     method: "POST",
@@ -25,3 +29,18 @@ export function createWorkflow(organizationId: string, name: string): Promise<Wo
   });
 }
 
+export function validateWorkflow(
+  organizationId: string,
+  workflowId: string,
+): Promise<WorkflowValidationResult> {
+  return apiRequest<WorkflowValidationResult>(
+    `/api/orgs/${organizationId}/workflows/${workflowId}/validate`,
+    { method: "POST" },
+  );
+}
+
+export function activateWorkflow(organizationId: string, workflowId: string): Promise<Workflow> {
+  return apiRequest<Workflow>(`/api/orgs/${organizationId}/workflows/${workflowId}/activate`, {
+    method: "POST",
+  });
+}

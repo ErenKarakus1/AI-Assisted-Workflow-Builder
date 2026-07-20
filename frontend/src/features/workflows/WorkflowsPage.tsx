@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 
@@ -66,10 +67,12 @@ export function WorkflowsPage() {
                   <div>
                     <strong>{workflow.name}</strong>
                     <span>
-                      {workflow.status} · revision {workflow.revision}
+                      {workflow.status} - revision {workflow.revision}
                     </span>
                   </div>
-                  <code>{workflow.id}</code>
+                  <Link className="text-link" to={`/workflows/${workflow.organization_id}/${workflow.id}`}>
+                    Open
+                  </Link>
                 </article>
               ))
             ) : (
@@ -83,4 +86,3 @@ export function WorkflowsPage() {
     </section>
   );
 }
-

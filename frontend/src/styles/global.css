@@ -186,6 +186,10 @@ select {
   color: #263244;
 }
 
+.button--secondary {
+  background: #384b63;
+}
+
 .form-error {
   border-radius: 6px;
   background: #fff1f0;
@@ -211,6 +215,18 @@ select {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .metric-card,
@@ -268,6 +284,63 @@ select {
   font-size: 0.92rem;
 }
 
+.text-link {
+  color: #246b5f;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
+.split-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.panel-heading {
+  border-bottom: 1px solid #edf1f6;
+  color: #344054;
+  font-weight: 800;
+  padding: 14px 18px;
+}
+
+.compact-row {
+  border-bottom: 1px solid #edf1f6;
+  color: #344054;
+  padding: 12px 18px;
+}
+
+.compact-row:last-child {
+  border-bottom: 0;
+}
+
+.success-panel,
+.error-panel {
+  border-radius: 8px;
+  padding: 16px 18px;
+}
+
+.success-panel {
+  border: 1px solid #a6d8c9;
+  background: #f0faf6;
+  color: #17604f;
+}
+
+.error-panel {
+  border: 1px solid #fecdca;
+  background: #fff6f5;
+  color: #912018;
+}
+
+.success-panel ul,
+.error-panel ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
 code {
   color: #667085;
   font-size: 0.78rem;
@@ -295,6 +368,8 @@ code {
   }
 
   .metric-grid,
+  .detail-grid,
+  .split-panel,
   .inline-form {
     grid-template-columns: 1fr;
   }

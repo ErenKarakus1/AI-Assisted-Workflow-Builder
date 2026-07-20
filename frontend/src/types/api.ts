@@ -44,3 +44,15 @@ export type Workflow = {
   revision: number;
 };
 
+export type WorkflowValidationIssue = {
+  code: string;
+  message: string;
+  node_id: string | null;
+  edge_id: string | null;
+};
+
+export type WorkflowValidationResult = {
+  is_valid: boolean;
+  errors: WorkflowValidationIssue[];
+  warnings: WorkflowValidationIssue[];
+};
