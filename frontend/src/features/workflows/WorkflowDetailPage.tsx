@@ -28,6 +28,7 @@ export function WorkflowDetailPage() {
   const queryClient = useQueryClient();
   const [instanceInput, setInstanceInput] = useState("{}");
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
+  const [instanceStatusFilter, setInstanceStatusFilter] = useState<InstanceStatusFilter>("all");
   const [hasUnsavedGraphChanges, setHasUnsavedGraphChanges] = useState(false);
   const workflowQuery = useQuery({
     queryKey: ["workflow", organizationId, workflowId],
@@ -263,6 +264,8 @@ export function WorkflowDetailPage() {
             startError={startInstanceMutation.error}
             onStart={() => startInstanceMutation.mutate()}
             instances={instancesQuery.data ?? []}
+            statusFilter={instanceStatusFilter}
+            onStatusFilterChange={setInstanceStatusFilter}
             selectedInstance={selectedInstance}
             selectedInstanceId={selectedInstanceId}
             onSelectInstance={setSelectedInstanceId}
@@ -292,6 +295,8 @@ function InstanceRunner({
   startError,
   onStart,
   instances,
+  statusFilter,
+  onStatusFilterChange,
   selectedInstance,
   selectedInstanceId,
   onSelectInstance,
@@ -306,6 +311,8 @@ function InstanceRunner({
   startError: unknown;
   onStart: () => void;
   instances: WorkflowInstance[];
+  statusFilter: InstanceStatusFilter;
+  onStatusFilterChange: (filter: InstanceStatusFilter) => void;
   selectedInstance: WorkflowInstance | null;
   selectedInstanceId: string | null;
   onSelectInstance: (id: string) => void;
@@ -314,6 +321,9 @@ function InstanceRunner({
 }) {
   const inputError = parseJsonObjectError(input);
   const canStart = workflowStatus === "active" && !isStarting && !inputError && !hasUnsavedGraphChanges;
+  const filteredInstances = instances.filter(
+    (instance) => statusFilter === "all" || instance.status === statusFilter,
+  );
 
   return (
     <section className="runner-panel">
@@ -357,9 +367,23 @@ function InstanceRunner({
         </div>
 
         <div className="list-panel">
-          <div className="panel-heading">Instances</div>
-          {instances.length ? (
-            instances.map((instance) => (
+          <div className="panel-heading panel-heading--stacked">
+            <span>Instances</span>
+            <div className="segmented-control">
+              {instanceStatusFilters.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  className={filter === statusFilter ? "active" : ""}
+                  onClick={() => onStatusFilterChange(filter)}
+                >
+                  {humanize(filter)}
+                </button>
+              ))}
+            </div>
+          </div>
+          {filteredInstances.length ? (
+            filteredInstances.map((instance) => (
               <button
                 className={
                   instance.id === (selectedInstanceId ?? selectedInstance?.id)
@@ -370,14 +394,14 @@ function InstanceRunner({
                 type="button"
                 onClick={() => onSelectInstance(instance.id)}
               >
-                <strong>{instance.status}</strong>
+                <strong>{humanize(instance.status)}</strong>
                 <span>
-                  {instance.id} - rev {instance.workflow_revision}
+                  Instance {shortId(instance.id)} · workflow rev {instance.workflow_revision}
                 </span>
               </button>
             ))
           ) : (
-            <p className="muted">No instances yet.</p>
+            <p className="muted">{instances.length ? "No instances match this filter." : "No instances yet."}</p>
           )}
         </div>
       </div>
@@ -387,9 +411,10 @@ function InstanceRunner({
           <article className="list-panel">
             <div className="panel-heading">Selected instance</div>
             <div className="compact-row instance-summary">
-              <strong>{selectedInstance.status}</strong>
-              <span>ID: {selectedInstance.id}</span>
-              <span>Active node: {selectedInstance.active_node_id ?? "none"}</span>
+              <strong>{humanize(selectedInstance.status)}</strong>
+              <span>Instance {shortId(selectedInstance.id)}</span>
+              <span>Active node: {selectedInstance.active_node_id ?? "None"}</span>
+              <span>Workflow revision: {selectedInstance.workflow_revision}</span>
               {selectedInstance.status === "waiting" ? (
                 <Link className="text-link" to="/tasks">
                   Review approval tasks
@@ -420,6 +445,10 @@ function InstanceRunner({
     </section>
   );
 }
+
+type InstanceStatusFilter = "all" | "running" | "waiting" | "completed" | "failed";
+
+const instanceStatusFilters: InstanceStatusFilter[] = ["all", "running", "waiting", "completed", "failed"];
 
 function WorkflowActionGuidance({
   status,
@@ -539,6 +568,10 @@ function humanize(value: string): string {
   return value
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function shortId(value: string): string {
+  return value.length > 8 ? value.slice(0, 8) : value;
 }
 
 function humanizeEventData(data: Record<string, unknown>): string {

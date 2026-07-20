@@ -494,6 +494,35 @@ textarea {
   padding: 14px 18px;
 }
 
+.panel-heading--stacked {
+  display: grid;
+  gap: 10px;
+}
+
+.segmented-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.segmented-control button {
+  min-height: 30px;
+  border: 1px solid #cfd8e5;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #526173;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 5px 10px;
+}
+
+.segmented-control button.active,
+.segmented-control button:hover {
+  border-color: #246b5f;
+  background: #246b5f;
+  color: #ffffff;
+}
+
 .compact-row {
   border-bottom: 1px solid #edf1f6;
   color: #344054;
