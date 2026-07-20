@@ -169,3 +169,81 @@ def test_list_organization_members_returns_user_friendly_members(client: TestCli
             "role": "owner",
         }
     ]
+
+
+def test_owner_can_add_registered_user_to_organization(client: TestClient) -> None:
+    owner_token = register_and_login(client, "owner@example.com")
+    register_and_login(client, "member@example.com")
+    create_response = client.post(
+        "/api/orgs",
+        json={"name": "Team Org"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{create_response.json()['id']}/members",
+        json={"email": "member@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["email"] == "member@example.com"
+    assert response.json()["role"] == "member"
+
+
+def test_add_organization_member_requires_registered_user(client: TestClient) -> None:
+    owner_token = register_and_login(client, "owner@example.com")
+    create_response = client.post(
+        "/api/orgs",
+        json={"name": "Team Org"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{create_response.json()['id']}/members",
+        json={"email": "missing@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_add_organization_member_rejects_duplicates(client: TestClient) -> None:
+    owner_token = register_and_login(client, "owner@example.com")
+    register_and_login(client, "member@example.com")
+    create_response = client.post(
+        "/api/orgs",
+        json={"name": "Team Org"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    client.post(
+        f"/api/orgs/{create_response.json()['id']}/members",
+        json={"email": "member@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{create_response.json()['id']}/members",
+        json={"email": "member@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 409
+
+
+def test_add_organization_member_rejects_owner_role(client: TestClient) -> None:
+    owner_token = register_and_login(client, "owner@example.com")
+    register_and_login(client, "member@example.com")
+    create_response = client.post(
+        "/api/orgs",
+        json={"name": "Team Org"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{create_response.json()['id']}/members",
+        json={"email": "member@example.com", "role": "owner"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 403

@@ -2,7 +2,7 @@ from app.domain.auth.repository import UserRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
 from app.models.organization import Organization, OrganizationMember, OrganizationRole
 from app.models.user import User
-from app.schemas.organization import OrganizationCreate, OrganizationMemberRead, OrganizationRead
+from app.schemas.organization import OrganizationCreate, OrganizationMemberCreate, OrganizationMemberRead, OrganizationRead
 
 
 class OrganizationNotFoundError(Exception):
@@ -10,6 +10,14 @@ class OrganizationNotFoundError(Exception):
 
 
 class OrganizationAccessDeniedError(Exception):
+    pass
+
+
+class OrganizationMemberNotFoundError(Exception):
+    pass
+
+
+class OrganizationMemberConflictError(Exception):
     pass
 
 
@@ -53,6 +61,48 @@ class OrganizationService:
                 )
 
         return result
+
+    async def add_member(
+        self,
+        organization_id: str,
+        payload: OrganizationMemberCreate,
+        user: User,
+        users: UserRepository,
+    ) -> OrganizationMemberRead:
+        membership = await self.members.get_by_user_and_org(user.id, organization_id)
+        if not membership:
+            raise OrganizationAccessDeniedError
+        if membership.role not in {OrganizationRole.OWNER, OrganizationRole.ADMIN}:
+            raise OrganizationAccessDeniedError
+        if payload.role == OrganizationRole.OWNER:
+            raise OrganizationAccessDeniedError
+
+        organization = await self.organizations.get_by_id(organization_id)
+        if not organization:
+            raise OrganizationNotFoundError
+
+        target_user = await users.get_by_email(payload.email)
+        if not target_user:
+            raise OrganizationMemberNotFoundError
+
+        existing_member = await self.members.get_by_user_and_org(target_user.id, organization_id)
+        if existing_member:
+            raise OrganizationMemberConflictError
+
+        member = await self.members.create(
+            OrganizationMember(
+                organization_id=organization_id,
+                user_id=target_user.id,
+                role=payload.role,
+            )
+        )
+        return OrganizationMemberRead(
+            id=member.id,
+            user_id=member.user_id,
+            email=target_user.email,
+            full_name=target_user.full_name,
+            role=member.role,
+        )
 
     async def get_for_user(self, organization_id: str, user: User) -> OrganizationRead:
         membership = await self.members.get_by_user_and_org(user.id, organization_id)

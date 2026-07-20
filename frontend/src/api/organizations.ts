@@ -15,3 +15,13 @@ export function createOrganization(name: string): Promise<Organization> {
 export function listOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
   return apiRequest<OrganizationMember[]>(`/api/orgs/${organizationId}/members`);
 }
+
+export function addOrganizationMember(
+  organizationId: string,
+  payload: { email: string; role: "admin" | "member" },
+): Promise<OrganizationMember> {
+  return apiRequest<OrganizationMember>(`/api/orgs/${organizationId}/members`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
