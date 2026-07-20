@@ -86,7 +86,12 @@ def approval_workflow_payload(name: str = "Approval Flow") -> dict:
         "name": name,
         "nodes": [
             {"id": "start-1", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
-            {"id": "approval-1", "type": "approval", "position": {"x": 160, "y": 0}, "data": {}},
+            {
+                "id": "approval-1",
+                "type": "approval",
+                "position": {"x": 160, "y": 0},
+                "data": {"assigned_role": "manager"},
+            },
             {"id": "approved-end", "type": "end", "position": {"x": 320, "y": -80}, "data": {}},
             {"id": "rejected-end", "type": "end", "position": {"x": 320, "y": 80}, "data": {}},
         ],
@@ -274,7 +279,18 @@ def test_condition_requires_true_and_false_branches(client: TestClient) -> None:
         "name": "Conditional Flow",
         "nodes": [
             {"id": "start-1", "type": "start", "position": {}, "data": {}},
-            {"id": "condition-1", "type": "condition", "position": {}, "data": {}},
+            {
+                "id": "condition-1",
+                "type": "condition",
+                "position": {},
+                "data": {
+                    "condition": {
+                        "field": "input.amount",
+                        "operator": "greater_than",
+                        "value": 100,
+                    }
+                },
+            },
             {"id": "end-1", "type": "end", "position": {}, "data": {}},
         ],
         "edges": [
@@ -296,6 +312,48 @@ def test_condition_requires_true_and_false_branches(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()["is_valid"] is False
     assert any(error["code"] == "condition_missing_branch" for error in response.json()["errors"])
+
+
+def test_validation_rejects_invalid_node_configs(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    payload = {
+        "name": "Bad Config Flow",
+        "nodes": [
+            {"id": "start-1", "type": "start", "position": {}, "data": {}},
+            {"id": "delay-1", "type": "delay", "position": {}, "data": {"seconds": -1}},
+            {"id": "approval-1", "type": "approval", "position": {}, "data": {}},
+            {"id": "condition-1", "type": "condition", "position": {}, "data": {"condition": {"field": ""}}},
+            {"id": "end-1", "type": "end", "position": {}, "data": {}},
+            {"id": "end-2", "type": "end", "position": {}, "data": {}},
+            {"id": "end-3", "type": "end", "position": {}, "data": {}},
+        ],
+        "edges": [
+            {"id": "edge-1", "source": "start-1", "target": "delay-1", "label": None, "data": {}},
+            {"id": "edge-2", "source": "delay-1", "target": "approval-1", "label": None, "data": {}},
+            {"id": "edge-3", "source": "approval-1", "target": "end-1", "label": "approve", "data": {}},
+            {"id": "edge-4", "source": "approval-1", "target": "condition-1", "label": "reject", "data": {}},
+            {"id": "edge-5", "source": "condition-1", "target": "end-2", "label": "true", "data": {}},
+            {"id": "edge-6", "source": "condition-1", "target": "end-3", "label": "false", "data": {}},
+        ],
+    }
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{create_response.json()['id']}/validate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    codes = {error["code"] for error in response.json()["errors"]}
+    assert response.status_code == 200
+    assert response.json()["is_valid"] is False
+    assert "delay_seconds_invalid" in codes
+    assert "approval_assignment_invalid" in codes
+    assert "condition_field_missing" in codes
+    assert "condition_operator_unsupported" in codes
 
 
 def test_activate_valid_workflow(client: TestClient) -> None:

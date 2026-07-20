@@ -6,6 +6,15 @@ from app.schemas.workflow import WorkflowValidationIssue, WorkflowValidationResu
 SUPPORTED_NODE_TYPES = {"start", "approval", "condition", "delay", "end"}
 CONDITION_BRANCHES = {"true", "false"}
 APPROVAL_OUTCOMES = {"approve", "reject"}
+SUPPORTED_CONDITION_OPERATORS = {
+    "equals",
+    "not_equals",
+    "greater_than",
+    "greater_than_or_equal",
+    "less_than",
+    "less_than_or_equal",
+    "contains",
+}
 
 
 class WorkflowValidator:
@@ -34,7 +43,10 @@ class WorkflowValidator:
         self._validate_end_nodes(end_nodes, outgoing, errors)
         self._validate_reachability(start_nodes, workflow.nodes, outgoing, errors)
         self._validate_condition_branches(workflow.nodes, outgoing, errors)
+        self._validate_condition_configs(workflow.nodes, errors)
         self._validate_approval_paths(workflow.nodes, outgoing, errors)
+        self._validate_approval_configs(workflow.nodes, errors)
+        self._validate_delay_configs(workflow.nodes, errors)
         self._validate_cycles(start_nodes, nodes_by_id, outgoing, errors)
 
         return WorkflowValidationResult(is_valid=not errors, errors=errors, warnings=warnings)
@@ -245,6 +257,84 @@ class WorkflowValidator:
                     )
                 )
 
+    def _validate_condition_configs(
+        self,
+        nodes: list[WorkflowNode],
+        errors: list[WorkflowValidationIssue],
+    ) -> None:
+        for node in nodes:
+            if node.type != "condition":
+                continue
+
+            condition = node.data.get("condition")
+            if not isinstance(condition, dict):
+                errors.append(
+                    WorkflowValidationIssue(
+                        code="condition_config_missing",
+                        message="Condition nodes must define a condition object",
+                        node_id=node.id,
+                    )
+                )
+                continue
+
+            if not isinstance(condition.get("field"), str) or not condition["field"].strip():
+                errors.append(
+                    WorkflowValidationIssue(
+                        code="condition_field_missing",
+                        message="Condition nodes must define a field",
+                        node_id=node.id,
+                    )
+                )
+            if condition.get("operator") not in SUPPORTED_CONDITION_OPERATORS:
+                errors.append(
+                    WorkflowValidationIssue(
+                        code="condition_operator_unsupported",
+                        message="Condition node uses an unsupported operator",
+                        node_id=node.id,
+                    )
+                )
+
+    def _validate_approval_configs(
+        self,
+        nodes: list[WorkflowNode],
+        errors: list[WorkflowValidationIssue],
+    ) -> None:
+        for node in nodes:
+            if node.type != "approval":
+                continue
+
+            assigned_user_id = node.data.get("assigned_user_id")
+            assigned_role = node.data.get("assigned_role")
+            has_user = isinstance(assigned_user_id, str) and bool(assigned_user_id.strip())
+            has_role = isinstance(assigned_role, str) and bool(assigned_role.strip())
+            if has_user == has_role:
+                errors.append(
+                    WorkflowValidationIssue(
+                        code="approval_assignment_invalid",
+                        message="Approval nodes must assign exactly one user or role",
+                        node_id=node.id,
+                    )
+                )
+
+    def _validate_delay_configs(
+        self,
+        nodes: list[WorkflowNode],
+        errors: list[WorkflowValidationIssue],
+    ) -> None:
+        for node in nodes:
+            if node.type != "delay":
+                continue
+
+            seconds = node.data.get("seconds")
+            if not isinstance(seconds, int) or seconds < 0:
+                errors.append(
+                    WorkflowValidationIssue(
+                        code="delay_seconds_invalid",
+                        message="Delay nodes must define non-negative integer seconds",
+                        node_id=node.id,
+                    )
+                )
+
     def _validate_cycles(
         self,
         start_nodes: list[WorkflowNode],
@@ -308,4 +398,3 @@ class WorkflowValidator:
         for edge in edges:
             incoming[edge.target].append(edge)
         return incoming
-

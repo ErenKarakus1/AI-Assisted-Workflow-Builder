@@ -58,4 +58,56 @@ scripts/         Developer and maintenance scripts
 
 ## Status
 
-Initial project scaffold.
+Backend foundation in progress. Current backend features include authentication, organizations, workflow drafts, deterministic workflow validation, execution for start/condition/end nodes, approval tasks, delay scheduling, and a one-shot scheduler worker.
+
+## Backend Commands
+
+Install backend dependencies:
+
+```powershell
+cd backend
+python -m pip install -e ".[dev]"
+```
+
+Run the API:
+
+```powershell
+.\scripts\run-api.ps1
+```
+
+Run backend tests:
+
+```powershell
+.\scripts\test-backend.ps1
+```
+
+Process due scheduled jobs once:
+
+```powershell
+.\scripts\run-scheduler-once.ps1
+```
+
+## Backend API Snapshot
+
+- `GET /api/health`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `GET /api/auth/me`
+- `POST /api/orgs`
+- `GET /api/orgs`
+- `GET /api/orgs/{organization_id}`
+- `POST /api/orgs/{organization_id}/workflows`
+- `GET /api/orgs/{organization_id}/workflows`
+- `GET /api/orgs/{organization_id}/workflows/{workflow_id}`
+- `PUT /api/orgs/{organization_id}/workflows/{workflow_id}`
+- `DELETE /api/orgs/{organization_id}/workflows/{workflow_id}`
+- `POST /api/orgs/{organization_id}/workflows/{workflow_id}/validate`
+- `POST /api/orgs/{organization_id}/workflows/{workflow_id}/activate`
+- `POST /api/orgs/{organization_id}/workflows/{workflow_id}/instances`
+- `GET /api/orgs/{organization_id}/instances/{instance_id}`
+- `GET /api/orgs/{organization_id}/instances/{instance_id}/events`
+- `GET /api/orgs/{organization_id}/tasks`
+- `GET /api/orgs/{organization_id}/tasks/{task_id}`
+- `POST /api/orgs/{organization_id}/tasks/{task_id}/approve`
+- `POST /api/orgs/{organization_id}/tasks/{task_id}/reject`
