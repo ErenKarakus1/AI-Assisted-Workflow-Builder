@@ -316,9 +316,16 @@ select {
   padding: 14px 16px;
 }
 
-.editor-toolbar div {
+.editor-toolbar div,
+.editor-actions {
   display: grid;
   gap: 3px;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .editor-toolbar span {
@@ -326,8 +333,38 @@ select {
   font-size: 0.9rem;
 }
 
+.node-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid #edf1f6;
+  padding: 12px 16px;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  min-height: 520px;
+}
+
 .flow-canvas {
   height: 520px;
+}
+
+.config-panel {
+  border-left: 1px solid #edf1f6;
+  background: #fbfcfe;
+  padding: 16px;
+}
+
+.config-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.config-stack h3 {
+  margin: 4px 0;
+  font-size: 1.15rem;
 }
 
 .react-flow__node {
@@ -407,7 +444,13 @@ code {
   .metric-grid,
   .detail-grid,
   .split-panel,
+  .editor-grid,
   .inline-form {
     grid-template-columns: 1fr;
+  }
+
+  .config-panel {
+    border-left: 0;
+    border-top: 1px solid #edf1f6;
   }
 }
