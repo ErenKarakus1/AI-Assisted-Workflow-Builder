@@ -14,6 +14,7 @@ from app.domain.orgs.repository import (
     OrganizationMemberRepository,
     OrganizationRepository,
 )
+from app.domain.workflows.repository import MongoWorkflowRepository, WorkflowRepository
 from app.models.user import User
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -35,6 +36,12 @@ async def organization_member_repository_dependency(
     database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
 ) -> OrganizationMemberRepository:
     return MongoOrganizationMemberRepository(database)
+
+
+async def workflow_repository_dependency(
+    database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
+) -> WorkflowRepository:
+    return MongoWorkflowRepository(database)
 
 
 async def current_user_dependency(

@@ -1,7 +1,9 @@
 from app.domain.auth.repository import UserRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
+from app.domain.workflows.repository import WorkflowRepository
 from app.models.organization import Organization, OrganizationMember
 from app.models.user import User
+from app.models.workflow import Workflow
 
 
 class InMemoryUserRepository(UserRepository):
@@ -54,3 +56,28 @@ class InMemoryOrganizationMemberRepository(OrganizationMemberRepository):
     async def list_by_user(self, user_id: str) -> list[OrganizationMember]:
         return [member for member in self.members_by_id.values() if member.user_id == user_id]
 
+
+class InMemoryWorkflowRepository(WorkflowRepository):
+    def __init__(self) -> None:
+        self.workflows_by_id: dict[str, Workflow] = {}
+
+    async def create(self, workflow: Workflow) -> Workflow:
+        self.workflows_by_id[workflow.id] = workflow
+        return workflow
+
+    async def get_by_id(self, workflow_id: str) -> Workflow | None:
+        return self.workflows_by_id.get(workflow_id)
+
+    async def list_by_organization(self, organization_id: str) -> list[Workflow]:
+        return [
+            workflow
+            for workflow in self.workflows_by_id.values()
+            if workflow.organization_id == organization_id
+        ]
+
+    async def update(self, workflow: Workflow) -> Workflow:
+        self.workflows_by_id[workflow.id] = workflow
+        return workflow
+
+    async def delete(self, workflow_id: str) -> None:
+        self.workflows_by_id.pop(workflow_id, None)

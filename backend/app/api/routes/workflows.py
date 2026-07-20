@@ -1,0 +1,106 @@
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+
+from app.api.dependencies import (
+    current_user_dependency,
+    organization_member_repository_dependency,
+    workflow_repository_dependency,
+)
+from app.domain.orgs.repository import OrganizationMemberRepository
+from app.domain.orgs.service import OrganizationAccessDeniedError
+from app.domain.workflows.repository import WorkflowRepository
+from app.domain.workflows.service import (
+    WorkflowNotFoundError,
+    WorkflowRevisionConflictError,
+    WorkflowService,
+)
+from app.models.user import User
+from app.schemas.workflow import WorkflowCreate, WorkflowRead, WorkflowUpdate
+
+router = APIRouter(prefix="/orgs/{organization_id}/workflows", tags=["workflows"])
+
+
+def workflow_service(
+    workflows: Annotated[WorkflowRepository, Depends(workflow_repository_dependency)],
+    members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
+) -> WorkflowService:
+    return WorkflowService(workflows, members)
+
+
+@router.post("", response_model=WorkflowRead, status_code=status.HTTP_201_CREATED)
+async def create_workflow(
+    organization_id: str,
+    payload: WorkflowCreate,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+) -> WorkflowRead:
+    try:
+        return await service.create(organization_id, payload, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+
+
+@router.get("", response_model=list[WorkflowRead])
+async def list_workflows(
+    organization_id: str,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+) -> list[WorkflowRead]:
+    try:
+        return await service.list_for_organization(organization_id, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+
+
+@router.get("/{workflow_id}", response_model=WorkflowRead)
+async def get_workflow(
+    organization_id: str,
+    workflow_id: str,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+) -> WorkflowRead:
+    try:
+        return await service.get(organization_id, workflow_id, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
+
+
+@router.put("/{workflow_id}", response_model=WorkflowRead)
+async def update_workflow(
+    organization_id: str,
+    workflow_id: str,
+    payload: WorkflowUpdate,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+) -> WorkflowRead:
+    try:
+        return await service.update(organization_id, workflow_id, payload, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
+    except WorkflowRevisionConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Workflow revision conflict") from exc
+
+
+@router.delete("/{workflow_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_workflow(
+    organization_id: str,
+    workflow_id: str,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+) -> Response:
+    try:
+        await service.delete(organization_id, workflow_id, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
+    except WorkflowRevisionConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Workflow revision conflict") from exc
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
