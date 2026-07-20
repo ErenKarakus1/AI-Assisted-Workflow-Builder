@@ -5,6 +5,8 @@ from app.api.dependencies import (
     instance_event_repository_dependency,
     organization_member_repository_dependency,
     organization_repository_dependency,
+    scheduled_job_repository_dependency,
+    task_repository_dependency,
     user_repository_dependency,
     workflow_instance_repository_dependency,
     workflow_repository_dependency,
@@ -12,12 +14,16 @@ from app.api.dependencies import (
 from app.domain.auth.repository import UserRepository
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
+from app.domain.scheduling.repository import ScheduledJobRepository
+from app.domain.tasks.repository import TaskRepository
 from app.domain.workflows.repository import WorkflowRepository
 from app.main import create_app
 from tests.fakes import (
     InMemoryInstanceEventRepository,
     InMemoryOrganizationMemberRepository,
     InMemoryOrganizationRepository,
+    InMemoryScheduledJobRepository,
+    InMemoryTaskRepository,
     InMemoryUserRepository,
     InMemoryWorkflowInstanceRepository,
     InMemoryWorkflowRepository,
@@ -33,6 +39,8 @@ def client() -> TestClient:
     workflow_repository = InMemoryWorkflowRepository()
     instance_repository = InMemoryWorkflowInstanceRepository()
     event_repository = InMemoryInstanceEventRepository()
+    task_repository = InMemoryTaskRepository()
+    job_repository = InMemoryScheduledJobRepository()
 
     async def override_user_repository() -> UserRepository:
         return user_repository
@@ -52,12 +60,20 @@ def client() -> TestClient:
     async def override_event_repository() -> InstanceEventRepository:
         return event_repository
 
+    async def override_task_repository() -> TaskRepository:
+        return task_repository
+
+    async def override_job_repository() -> ScheduledJobRepository:
+        return job_repository
+
     app.dependency_overrides[user_repository_dependency] = override_user_repository
     app.dependency_overrides[organization_repository_dependency] = override_organization_repository
     app.dependency_overrides[organization_member_repository_dependency] = override_member_repository
     app.dependency_overrides[workflow_repository_dependency] = override_workflow_repository
     app.dependency_overrides[workflow_instance_repository_dependency] = override_instance_repository
     app.dependency_overrides[instance_event_repository_dependency] = override_event_repository
+    app.dependency_overrides[task_repository_dependency] = override_task_repository
+    app.dependency_overrides[scheduled_job_repository_dependency] = override_job_repository
     return TestClient(app)
 
 
@@ -235,4 +251,3 @@ def test_get_instance_requires_org_membership(client: TestClient) -> None:
     )
 
     assert response.status_code == 403
-

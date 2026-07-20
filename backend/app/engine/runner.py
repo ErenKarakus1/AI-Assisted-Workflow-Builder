@@ -1,11 +1,12 @@
 from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from app.engine.handlers.base import HandlerResult, NodeHandler
 from app.engine.handlers.condition import ConditionNodeHandler
 from app.engine.handlers.end import EndNodeHandler
 from app.engine.handlers.start import StartNodeHandler
 from app.models.instance import InstanceEvent, InstanceEventType, WorkflowInstance, WorkflowInstanceStatus
+from app.models.scheduled_job import ScheduledJob, ScheduledJobType
 from app.models.task import Task
 from app.models.workflow import Workflow, WorkflowEdge, WorkflowNode
 
@@ -15,8 +16,13 @@ class WorkflowExecutionError(Exception):
 
 
 class WorkflowEngine:
-    def __init__(self, created_tasks: list[Task] | None = None) -> None:
+    def __init__(
+        self,
+        created_tasks: list[Task] | None = None,
+        created_jobs: list[ScheduledJob] | None = None,
+    ) -> None:
         self.created_tasks = created_tasks if created_tasks is not None else []
+        self.created_jobs = created_jobs if created_jobs is not None else []
         self.handlers: dict[str, NodeHandler] = {
             "start": StartNodeHandler(),
             "condition": ConditionNodeHandler(),
@@ -62,6 +68,29 @@ class WorkflowEngine:
                             InstanceEventType.TASK_CREATED,
                             node_id=node.id,
                             data={"task_id": task.id},
+                        )
+                    )
+                    instance.revision += 1
+                    break
+                if node.type == "delay":
+                    delay_seconds = int(node.data.get("seconds", 0))
+                    job = ScheduledJob(
+                        organization_id=workflow.organization_id,
+                        workflow_id=workflow.id,
+                        instance_id=instance.id,
+                        node_id=node.id,
+                        type=ScheduledJobType.DELAY,
+                        run_at=datetime.now(UTC) + timedelta(seconds=delay_seconds),
+                    )
+                    self.created_jobs.append(job)
+                    instance.status = WorkflowInstanceStatus.WAITING
+                    events.append(
+                        self._event(
+                            workflow,
+                            instance,
+                            InstanceEventType.DELAY_SCHEDULED,
+                            node_id=node.id,
+                            data={"job_id": job.id, "run_at": job.run_at.isoformat()},
                         )
                     )
                     instance.revision += 1
@@ -125,6 +154,26 @@ class WorkflowEngine:
         instance.status = WorkflowInstanceStatus.RUNNING
         instance.context[f"approval_{approval_node_id}"] = decision
         return await self.run(workflow, instance, starting_node_id=edge.target)
+
+    async def resume_after_delay(
+        self,
+        workflow: Workflow,
+        instance: WorkflowInstance,
+        delay_node_id: str,
+    ) -> list[InstanceEvent]:
+        outgoing = self._outgoing_edges(workflow.edges)
+        edge = outgoing[delay_node_id][0]
+        instance.status = WorkflowInstanceStatus.RUNNING
+        events = [
+            self._event(
+                workflow,
+                instance,
+                InstanceEventType.DELAY_COMPLETED,
+                node_id=delay_node_id,
+            )
+        ]
+        events.extend(await self.run(workflow, instance, starting_node_id=edge.target))
+        return events
 
     async def _execute_node(
         self,

@@ -6,6 +6,7 @@ from app.api.dependencies import (
     current_user_dependency,
     instance_event_repository_dependency,
     organization_member_repository_dependency,
+    scheduled_job_repository_dependency,
     task_repository_dependency,
     workflow_instance_repository_dependency,
     workflow_repository_dependency,
@@ -17,6 +18,7 @@ from app.domain.instances.service import (
     WorkflowNotActiveError,
 )
 from app.domain.orgs.repository import OrganizationMemberRepository
+from app.domain.scheduling.repository import ScheduledJobRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
 from app.domain.workflows.repository import WorkflowRepository
 from app.domain.tasks.repository import TaskRepository
@@ -32,8 +34,9 @@ def instance_service(
     events: Annotated[InstanceEventRepository, Depends(instance_event_repository_dependency)],
     members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
     tasks: Annotated[TaskRepository, Depends(task_repository_dependency)],
+    jobs: Annotated[ScheduledJobRepository, Depends(scheduled_job_repository_dependency)],
 ) -> WorkflowInstanceService:
-    return WorkflowInstanceService(workflows, instances, events, members, tasks)
+    return WorkflowInstanceService(workflows, instances, events, members, tasks, jobs)
 
 
 @router.post(

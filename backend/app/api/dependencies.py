@@ -20,6 +20,7 @@ from app.domain.orgs.repository import (
     OrganizationMemberRepository,
     OrganizationRepository,
 )
+from app.domain.scheduling.repository import MongoScheduledJobRepository, ScheduledJobRepository
 from app.domain.tasks.repository import MongoTaskRepository, TaskRepository
 from app.domain.workflows.repository import MongoWorkflowRepository, WorkflowRepository
 from app.models.user import User
@@ -67,6 +68,12 @@ async def task_repository_dependency(
     database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
 ) -> TaskRepository:
     return MongoTaskRepository(database)
+
+
+async def scheduled_job_repository_dependency(
+    database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
+) -> ScheduledJobRepository:
+    return MongoScheduledJobRepository(database)
 
 
 async def current_user_dependency(

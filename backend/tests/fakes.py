@@ -1,10 +1,12 @@
 from app.domain.auth.repository import UserRepository
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
+from app.domain.scheduling.repository import ScheduledJobRepository
 from app.domain.tasks.repository import TaskRepository
 from app.domain.workflows.repository import WorkflowRepository
 from app.models.instance import InstanceEvent, WorkflowInstance
 from app.models.organization import Organization, OrganizationMember
+from app.models.scheduled_job import ScheduledJob, ScheduledJobStatus
 from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.models.workflow import Workflow
@@ -142,3 +144,29 @@ class InMemoryTaskRepository(TaskRepository):
     async def update(self, task: Task) -> Task:
         self.tasks_by_id[task.id] = task
         return task
+
+
+class InMemoryScheduledJobRepository(ScheduledJobRepository):
+    def __init__(self) -> None:
+        self.jobs_by_id: dict[str, ScheduledJob] = {}
+
+    async def create(self, job: ScheduledJob) -> ScheduledJob:
+        self.jobs_by_id[job.id] = job
+        return job
+
+    async def claim_due(self, now, limit: int = 10) -> list[ScheduledJob]:
+        claimed: list[ScheduledJob] = []
+        for job in self.jobs_by_id.values():
+            if len(claimed) >= limit:
+                break
+            if job.status == ScheduledJobStatus.PENDING and job.run_at <= now:
+                job.status = ScheduledJobStatus.PROCESSING
+                job.locked_at = now
+                job.attempts += 1
+                job.revision += 1
+                claimed.append(job)
+        return claimed
+
+    async def update(self, job: ScheduledJob) -> ScheduledJob:
+        self.jobs_by_id[job.id] = job
+        return job

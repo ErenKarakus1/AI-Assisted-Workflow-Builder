@@ -21,6 +21,8 @@ class InstanceEventType(StrEnum):
     TASK_CREATED = "task_created"
     TASK_APPROVED = "task_approved"
     TASK_REJECTED = "task_rejected"
+    DELAY_SCHEDULED = "delay_scheduled"
+    DELAY_COMPLETED = "delay_completed"
 
 
 class WorkflowInstance(BaseModel):

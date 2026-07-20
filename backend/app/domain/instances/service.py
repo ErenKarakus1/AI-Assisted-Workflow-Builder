@@ -1,6 +1,7 @@
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
+from app.domain.scheduling.repository import ScheduledJobRepository
 from app.domain.tasks.repository import TaskRepository
 from app.domain.workflows.repository import WorkflowRepository
 from app.engine.runner import WorkflowEngine
@@ -26,12 +27,14 @@ class WorkflowInstanceService:
         events: InstanceEventRepository,
         members: OrganizationMemberRepository,
         tasks: TaskRepository,
+        jobs: ScheduledJobRepository,
     ) -> None:
         self.workflows = workflows
         self.instances = instances
         self.events = events
         self.members = members
         self.tasks = tasks
+        self.jobs = jobs
 
     async def start(
         self,
@@ -56,9 +59,12 @@ class WorkflowInstanceService:
         )
         await self.instances.create(instance)
         created_tasks = []
-        emitted_events = await WorkflowEngine(created_tasks).run(workflow, instance)
+        created_jobs = []
+        emitted_events = await WorkflowEngine(created_tasks, created_jobs).run(workflow, instance)
         for task in created_tasks:
             await self.tasks.create(task)
+        for job in created_jobs:
+            await self.jobs.create(job)
         for event in emitted_events:
             await self.events.append(event)
         return self._read_instance(await self.instances.update(instance))
