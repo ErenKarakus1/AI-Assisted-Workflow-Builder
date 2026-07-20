@@ -151,6 +151,13 @@ p {
   width: min(100%, 520px);
 }
 
+.workflow-create-form {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(220px, 280px) auto;
+  gap: 14px;
+  width: min(100%, 760px);
+}
+
 label {
   display: grid;
   gap: 7px;
@@ -580,6 +587,7 @@ code {
   .editor-grid,
   .runner-grid,
   .duration-fields,
+  .workflow-create-form,
   .inline-form {
     grid-template-columns: 1fr;
   }

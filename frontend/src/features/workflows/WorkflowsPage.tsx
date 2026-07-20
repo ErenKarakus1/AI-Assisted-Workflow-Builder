@@ -5,14 +5,16 @@ import { useForm } from "react-hook-form";
 
 import { listOrganizations } from "../../api/organizations";
 import { createWorkflow, listWorkflows } from "../../api/workflows";
+import { workflowTemplates } from "./templates";
 
 type FormValues = {
   name: string;
+  templateId: string;
 };
 
 export function WorkflowsPage() {
   const queryClient = useQueryClient();
-  const form = useForm<FormValues>();
+  const form = useForm<FormValues>({ defaultValues: { templateId: "blank" } });
   const organizationsQuery = useQuery({
     queryKey: ["organizations"],
     queryFn: listOrganizations,
@@ -30,12 +32,17 @@ export function WorkflowsPage() {
     enabled: Boolean(organizationId),
   });
   const createMutation = useMutation({
-    mutationFn: (values: FormValues) => createWorkflow(organizationId, values.name),
+    mutationFn: (values: FormValues) => {
+      const template = workflowTemplates.find((item) => item.id === values.templateId) ?? workflowTemplates[0];
+      return createWorkflow(organizationId, values.name, template.nodes, template.edges);
+    },
     onSuccess: async () => {
-      form.reset();
+      form.reset({ templateId: "blank" });
       await queryClient.invalidateQueries({ queryKey: ["workflows", organizationId] });
     },
   });
+  const selectedTemplate =
+    workflowTemplates.find((template) => template.id === form.watch("templateId")) ?? workflowTemplates[0];
 
   return (
     <section className="page-stack">
@@ -54,12 +61,20 @@ export function WorkflowsPage() {
       </div>
       {organizationId ? (
         <>
-          <form className="inline-form" onSubmit={form.handleSubmit((values) => createMutation.mutate(values))}>
+          <form className="workflow-create-form" onSubmit={form.handleSubmit((values) => createMutation.mutate(values))}>
             <input placeholder="Workflow name" {...form.register("name", { required: true })} />
+            <select {...form.register("templateId")}>
+              {workflowTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
             <button className="button" type="submit" disabled={createMutation.isPending}>
               Create
             </button>
           </form>
+          <p className="muted">{selectedTemplate.description}</p>
           <div className="list-panel">
             {workflowsQuery.data?.length ? (
               workflowsQuery.data.map((workflow) => (
