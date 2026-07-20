@@ -417,3 +417,49 @@ def test_active_workflow_cannot_be_updated(client: TestClient) -> None:
     )
 
     assert response.status_code == 409
+
+
+def test_deactivate_active_workflow_returns_to_draft(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=approval_workflow_payload(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    workflow_id = create_response.json()["id"]
+    client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}/activate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}/deactivate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "draft"
+    assert response.json()["revision"] == 3
+
+
+def test_validate_draft_uses_unsaved_graph(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=workflow_payload(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    workflow = create_response.json()
+    payload = workflow_payload("Unsaved Bad Graph")
+    payload["revision"] = workflow["revision"]
+    payload["edges"] = []
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow['id']}/validate-draft",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_valid"] is False
+    assert any(error["code"] == "start_outgoing_count" for error in response.json()["errors"])

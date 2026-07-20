@@ -84,6 +84,24 @@ async def validate_workflow(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
 
 
+@router.post("/{workflow_id}/validate-draft", response_model=WorkflowValidationResult)
+async def validate_workflow_draft(
+    organization_id: str,
+    workflow_id: str,
+    payload: WorkflowUpdate,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+) -> WorkflowValidationResult:
+    try:
+        return await service.validate_draft(organization_id, workflow_id, payload, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
+    except WorkflowRevisionConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Workflow revision conflict") from exc
+
+
 @router.post("/{workflow_id}/activate", response_model=WorkflowRead)
 async def activate_workflow(
     organization_id: str,
@@ -104,6 +122,23 @@ async def activate_workflow(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=exc.result.model_dump(),
         ) from exc
+
+
+@router.post("/{workflow_id}/deactivate", response_model=WorkflowRead)
+async def deactivate_workflow(
+    organization_id: str,
+    workflow_id: str,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+) -> WorkflowRead:
+    try:
+        return await service.deactivate(organization_id, workflow_id, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
+    except WorkflowRevisionConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Workflow revision conflict") from exc
 
 
 @router.put("/{workflow_id}", response_model=WorkflowRead)

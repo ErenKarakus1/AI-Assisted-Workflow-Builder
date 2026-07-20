@@ -91,6 +91,26 @@ class WorkflowService:
         workflow = await self._get_for_organization(organization_id, workflow_id, user)
         return WorkflowValidator().validate(workflow)
 
+    async def validate_draft(
+        self,
+        organization_id: str,
+        workflow_id: str,
+        payload: WorkflowUpdate,
+        user: User,
+    ) -> WorkflowValidationResult:
+        workflow = await self._get_for_organization(organization_id, workflow_id, user)
+        if workflow.revision != payload.revision:
+            raise WorkflowRevisionConflictError
+
+        draft = workflow.model_copy(
+            update={
+                "name": payload.name.strip(),
+                "nodes": payload.nodes,
+                "edges": payload.edges,
+            }
+        )
+        return WorkflowValidator().validate(draft)
+
     async def activate(self, organization_id: str, workflow_id: str, user: User) -> WorkflowRead:
         workflow = await self._get_for_organization(organization_id, workflow_id, user)
         if workflow.status != WorkflowStatus.DRAFT:
@@ -101,6 +121,16 @@ class WorkflowService:
             raise WorkflowValidationError(validation_result)
 
         workflow.status = WorkflowStatus.ACTIVE
+        workflow.revision += 1
+        workflow.updated_at = datetime.now(UTC)
+        return self._read(await self.workflows.update(workflow))
+
+    async def deactivate(self, organization_id: str, workflow_id: str, user: User) -> WorkflowRead:
+        workflow = await self._get_for_organization(organization_id, workflow_id, user)
+        if workflow.status != WorkflowStatus.ACTIVE:
+            raise WorkflowRevisionConflictError
+
+        workflow.status = WorkflowStatus.DRAFT
         workflow.revision += 1
         workflow.updated_at = datetime.now(UTC)
         return self._read(await self.workflows.update(workflow))

@@ -39,8 +39,33 @@ export function validateWorkflow(
   );
 }
 
+export function validateWorkflowDraft(
+  organizationId: string,
+  workflowId: string,
+  workflow: Workflow,
+): Promise<WorkflowValidationResult> {
+  return apiRequest<WorkflowValidationResult>(
+    `/api/orgs/${organizationId}/workflows/${workflowId}/validate-draft`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: workflow.name,
+        nodes: workflow.nodes,
+        edges: workflow.edges,
+        revision: workflow.revision,
+      }),
+    },
+  );
+}
+
 export function activateWorkflow(organizationId: string, workflowId: string): Promise<Workflow> {
   return apiRequest<Workflow>(`/api/orgs/${organizationId}/workflows/${workflowId}/activate`, {
+    method: "POST",
+  });
+}
+
+export function deactivateWorkflow(organizationId: string, workflowId: string): Promise<Workflow> {
+  return apiRequest<Workflow>(`/api/orgs/${organizationId}/workflows/${workflowId}/deactivate`, {
     method: "POST",
   });
 }

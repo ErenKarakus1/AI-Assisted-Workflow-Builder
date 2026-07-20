@@ -20,6 +20,8 @@ type Props = {
   workflow: Workflow;
   isSaving: boolean;
   onSave: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void;
+  isValidatingDraft: boolean;
+  onValidateDraft: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void;
 };
 
 type NodeKind = "start" | "approval" | "condition" | "delay" | "end";
@@ -36,7 +38,13 @@ const conditionOperators = [
 ];
 const approvalRoles = ["manager", "finance", "hr", "legal", "admin", "member"];
 
-export function WorkflowGraphEditor({ workflow, isSaving, onSave }: Props) {
+export function WorkflowGraphEditor({
+  workflow,
+  isSaving,
+  onSave,
+  isValidatingDraft,
+  onValidateDraft,
+}: Props) {
   const isEditable = workflow.status === "draft";
   const initialNodes = useMemo(() => workflow.nodes.map(toFlowNode), [workflow.nodes]);
   const initialEdges = useMemo(() => workflow.edges.map(toFlowEdge), [workflow.edges]);
@@ -180,6 +188,14 @@ export function WorkflowGraphEditor({ workflow, isSaving, onSave }: Props) {
           </button>
           <button
             className="button"
+            type="button"
+            disabled={!isEditable || isValidatingDraft}
+            onClick={() => onValidateDraft(nodes.map(toWorkflowNode), edges.map(toWorkflowEdge))}
+          >
+            {isValidatingDraft ? "Validating..." : "Validate draft"}
+          </button>
+          <button
+            className="button button--secondary"
             type="button"
             disabled={!isEditable || isSaving}
             onClick={() => onSave(nodes.map(toWorkflowNode), edges.map(toWorkflowEdge))}
