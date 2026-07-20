@@ -1,9 +1,11 @@
 from app.domain.auth.repository import UserRepository
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
+from app.domain.tasks.repository import TaskRepository
 from app.domain.workflows.repository import WorkflowRepository
 from app.models.instance import InstanceEvent, WorkflowInstance
 from app.models.organization import Organization, OrganizationMember
+from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.models.workflow import Workflow
 
@@ -111,3 +113,32 @@ class InMemoryInstanceEventRepository(InstanceEventRepository):
 
     async def list_by_instance(self, instance_id: str) -> list[InstanceEvent]:
         return [event for event in self.events if event.instance_id == instance_id]
+
+
+class InMemoryTaskRepository(TaskRepository):
+    def __init__(self) -> None:
+        self.tasks_by_id: dict[str, Task] = {}
+
+    async def create(self, task: Task) -> Task:
+        self.tasks_by_id[task.id] = task
+        return task
+
+    async def get_by_id(self, task_id: str) -> Task | None:
+        return self.tasks_by_id.get(task_id)
+
+    async def get_pending_by_instance_and_node(self, instance_id: str, node_id: str) -> Task | None:
+        for task in self.tasks_by_id.values():
+            if (
+                task.instance_id == instance_id
+                and task.node_id == node_id
+                and task.status == TaskStatus.PENDING
+            ):
+                return task
+        return None
+
+    async def list_by_organization(self, organization_id: str) -> list[Task]:
+        return [task for task in self.tasks_by_id.values() if task.organization_id == organization_id]
+
+    async def update(self, task: Task) -> Task:
+        self.tasks_by_id[task.id] = task
+        return task

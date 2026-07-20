@@ -20,6 +20,7 @@ from app.domain.orgs.repository import (
     OrganizationMemberRepository,
     OrganizationRepository,
 )
+from app.domain.tasks.repository import MongoTaskRepository, TaskRepository
 from app.domain.workflows.repository import MongoWorkflowRepository, WorkflowRepository
 from app.models.user import User
 
@@ -60,6 +61,12 @@ async def instance_event_repository_dependency(
     database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
 ) -> InstanceEventRepository:
     return MongoInstanceEventRepository(database)
+
+
+async def task_repository_dependency(
+    database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
+) -> TaskRepository:
+    return MongoTaskRepository(database)
 
 
 async def current_user_dependency(

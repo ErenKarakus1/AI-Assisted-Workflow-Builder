@@ -18,6 +18,9 @@ class InstanceEventType(StrEnum):
     CONDITION_EVALUATED = "condition_evaluated"
     INSTANCE_COMPLETED = "instance_completed"
     INSTANCE_FAILED = "instance_failed"
+    TASK_CREATED = "task_created"
+    TASK_APPROVED = "task_approved"
+    TASK_REJECTED = "task_rejected"
 
 
 class WorkflowInstance(BaseModel):
@@ -44,4 +47,3 @@ class InstanceEvent(BaseModel):
     node_id: str | None = None
     data: dict = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-

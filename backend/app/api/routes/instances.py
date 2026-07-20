@@ -6,6 +6,7 @@ from app.api.dependencies import (
     current_user_dependency,
     instance_event_repository_dependency,
     organization_member_repository_dependency,
+    task_repository_dependency,
     workflow_instance_repository_dependency,
     workflow_repository_dependency,
 )
@@ -18,6 +19,7 @@ from app.domain.instances.service import (
 from app.domain.orgs.repository import OrganizationMemberRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
 from app.domain.workflows.repository import WorkflowRepository
+from app.domain.tasks.repository import TaskRepository
 from app.models.user import User
 from app.schemas.instance import InstanceEventRead, WorkflowInstanceCreate, WorkflowInstanceRead
 
@@ -29,8 +31,9 @@ def instance_service(
     instances: Annotated[WorkflowInstanceRepository, Depends(workflow_instance_repository_dependency)],
     events: Annotated[InstanceEventRepository, Depends(instance_event_repository_dependency)],
     members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
+    tasks: Annotated[TaskRepository, Depends(task_repository_dependency)],
 ) -> WorkflowInstanceService:
-    return WorkflowInstanceService(workflows, instances, events, members)
+    return WorkflowInstanceService(workflows, instances, events, members, tasks)
 
 
 @router.post(
@@ -83,4 +86,3 @@ async def list_workflow_instance_events(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
     except WorkflowInstanceNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found") from exc
-
