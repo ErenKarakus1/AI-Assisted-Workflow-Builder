@@ -210,13 +210,11 @@ export function WorkflowDetailPage() {
           />
 
           <div className="split-panel">
-            <GraphList title="Nodes" items={workflow.nodes.map((node) => `${node.id} - ${node.type}`)} />
             <GraphList
-              title="Edges"
-              items={workflow.edges.map(
-                (edge) => `${edge.id}: ${edge.source} -> ${edge.target}${edge.label ? ` (${edge.label})` : ""}`,
-              )}
+              title="Nodes"
+              items={workflow.nodes.map((node) => `${nodeDisplayName(node.id, new Map(workflow.nodes.map((item) => [item.id, item])))} - ${humanize(node.type)}`)}
             />
+            <ConnectionList nodes={workflow.nodes} edges={workflow.edges} />
           </div>
         </>
       ) : null}
@@ -310,10 +308,10 @@ function InstanceRunner({
       </div>
 
       {selectedInstance ? (
-        <div className="split-panel">
+        <div className="split-panel instance-panels">
           <article className="list-panel">
             <div className="panel-heading">Selected instance</div>
-            <div className="compact-row">
+            <div className="compact-row instance-summary">
               <strong>{selectedInstance.status}</strong>
               <span>ID: {selectedInstance.id}</span>
               <span>Active node: {selectedInstance.active_node_id ?? "none"}</span>
@@ -332,10 +330,10 @@ function InstanceRunner({
             {areEventsLoading ? <p className="muted">Loading events...</p> : null}
             {events.length ? (
               events.map((event) => (
-                <div className="compact-row" key={event.id}>
-                  <strong>{event.type}</strong>
+                <div className="compact-row event-row" key={event.id}>
+                  <strong>{humanize(event.type)}</strong>
                   <span>{event.node_id ? `Node: ${event.node_id}` : "Workflow event"}</span>
-                  {Object.keys(event.data).length ? <code>{JSON.stringify(event.data)}</code> : null}
+                  {Object.keys(event.data).length ? <code>{humanizeEventData(event.data)}</code> : null}
                 </div>
               ))
             ) : !areEventsLoading ? (
@@ -354,6 +352,28 @@ function JsonBlock({ title, value }: { title: string; value: Record<string, unkn
       <strong>{title}</strong>
       <pre>{JSON.stringify(value, null, 2)}</pre>
     </div>
+  );
+}
+
+function ConnectionList({ nodes, edges }: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }) {
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+
+  return (
+    <article className="list-panel">
+      <div className="panel-heading">Connections</div>
+      {edges.length ? (
+        edges.map((edge) => (
+          <div className="compact-row connection-row" key={edge.id}>
+            <strong>
+              {nodeDisplayName(edge.source, nodesById)} → {nodeDisplayName(edge.target, nodesById)}
+            </strong>
+            <span>{edge.label ? humanize(edge.label) : "Default path"}</span>
+          </div>
+        ))
+      ) : (
+        <p className="muted">No connections yet.</p>
+      )}
+    </article>
   );
 }
 
@@ -394,6 +414,18 @@ function stringValue(value: unknown): string {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
     ? String(value)
     : "";
+}
+
+function humanize(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function humanizeEventData(data: Record<string, unknown>): string {
+  return Object.entries(data)
+    .map(([key, value]) => `${humanize(key)}: ${String(value)}`)
+    .join(", ");
 }
 
 function parseJsonObject(value: string): Record<string, unknown> {

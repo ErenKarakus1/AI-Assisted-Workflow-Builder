@@ -30,13 +30,13 @@ type NodeKind = "start" | "approval" | "condition" | "delay" | "end";
 
 const nodeKinds: NodeKind[] = ["start", "approval", "condition", "delay", "end"];
 const conditionOperators = [
-  "equals",
-  "not_equals",
-  "greater_than",
-  "greater_than_or_equal",
-  "less_than",
-  "less_than_or_equal",
-  "contains",
+  { value: "equals", label: "Equals" },
+  { value: "not_equals", label: "Does not equal" },
+  { value: "greater_than", label: "Greater than" },
+  { value: "greater_than_or_equal", label: "Greater than or equal to" },
+  { value: "less_than", label: "Less than" },
+  { value: "less_than_or_equal", label: "Less than or equal to" },
+  { value: "contains", label: "Contains" },
 ];
 const approvalRoles = ["manager", "finance", "hr", "legal", "admin", "member"];
 
@@ -343,7 +343,7 @@ function NodeConfigPanel({
       {kind === "condition" ? (
         <>
           <label>
-            Field
+            Check this field
             <input
               disabled={!isEditable}
               value={stringValue((data.condition as Record<string, unknown> | undefined)?.field)}
@@ -356,7 +356,7 @@ function NodeConfigPanel({
             />
           </label>
           <label>
-            Operator
+            Comparison
             <select
               disabled={!isEditable}
               value={stringValue(conditionData(data).operator) || "equals"}
@@ -368,14 +368,14 @@ function NodeConfigPanel({
               }
             >
               {conditionOperators.map((operator) => (
-                <option key={operator} value={operator}>
-                  {operator}
+                <option key={operator.value} value={operator.value}>
+                  {operator.label}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            Value
+            Compare against
             <input
               disabled={!isEditable}
               value={stringValue(conditionData(data).value)}
@@ -391,16 +391,7 @@ function NodeConfigPanel({
       ) : null}
 
       {kind === "delay" ? (
-        <label>
-          Seconds
-          <input
-            disabled={!isEditable}
-            type="number"
-            min={0}
-            value={numberValue(data.seconds)}
-            onChange={(event) => onChange({ ...data, seconds: Number(event.target.value) })}
-          />
-        </label>
+        <DelayConfig data={data} isEditable={isEditable} onChange={onChange} />
       ) : null}
 
       {kind === "end" ? (
@@ -413,6 +404,77 @@ function NodeConfigPanel({
           />
         </label>
       ) : null}
+    </div>
+  );
+}
+
+function DelayConfig({
+  data,
+  isEditable,
+  onChange,
+}: {
+  data: Record<string, unknown>;
+  isEditable: boolean;
+  onChange: (data: Record<string, unknown>) => void;
+}) {
+  const duration = splitDuration(numberValue(data.seconds));
+
+  return (
+    <div className="duration-fields">
+      <label>
+        Hours
+        <input
+          disabled={!isEditable}
+          type="number"
+          min={0}
+          value={duration.hours}
+          onChange={(event) =>
+            onChange({
+              ...data,
+              seconds: combineDuration({
+                ...duration,
+                hours: Math.max(0, Number(event.target.value)),
+              }),
+            })
+          }
+        />
+      </label>
+      <label>
+        Minutes
+        <input
+          disabled={!isEditable}
+          type="number"
+          min={0}
+          value={duration.minutes}
+          onChange={(event) =>
+            onChange({
+              ...data,
+              seconds: combineDuration({
+                ...duration,
+                minutes: Math.max(0, Number(event.target.value)),
+              }),
+            })
+          }
+        />
+      </label>
+      <label>
+        Seconds
+        <input
+          disabled={!isEditable}
+          type="number"
+          min={0}
+          value={duration.seconds}
+          onChange={(event) =>
+            onChange({
+              ...data,
+              seconds: combineDuration({
+                ...duration,
+                seconds: Math.max(0, Number(event.target.value)),
+              }),
+            })
+          }
+        />
+      </label>
     </div>
   );
 }
@@ -564,6 +626,18 @@ function stringValue(value: unknown): string {
 
 function numberValue(value: unknown): number {
   return typeof value === "number" ? value : 0;
+}
+
+function splitDuration(totalSeconds: number): { hours: number; minutes: number; seconds: number } {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  return { hours, minutes, seconds };
+}
+
+function combineDuration(duration: { hours: number; minutes: number; seconds: number }): number {
+  return Math.floor(duration.hours) * 3600 + Math.floor(duration.minutes) * 60 + Math.floor(duration.seconds);
 }
 
 function parseConfigValue(value: string): string | number | boolean {
