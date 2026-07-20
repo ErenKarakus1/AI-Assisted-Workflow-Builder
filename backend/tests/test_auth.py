@@ -4,24 +4,7 @@ from fastapi.testclient import TestClient
 from app.api.dependencies import user_repository_dependency
 from app.domain.auth.repository import UserRepository
 from app.main import create_app
-from app.models.user import User
-
-
-class InMemoryUserRepository(UserRepository):
-    def __init__(self) -> None:
-        self.users_by_id: dict[str, User] = {}
-        self.users_by_email: dict[str, User] = {}
-
-    async def create(self, user: User) -> User:
-        self.users_by_id[user.id] = user
-        self.users_by_email[user.email] = user
-        return user
-
-    async def get_by_email(self, email: str) -> User | None:
-        return self.users_by_email.get(email.lower())
-
-    async def get_by_id(self, user_id: str) -> User | None:
-        return self.users_by_id.get(user_id)
+from tests.fakes import InMemoryUserRepository
 
 
 @pytest.fixture
@@ -140,4 +123,3 @@ def test_refresh_token_returns_new_token_pair(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()["access_token"]
     assert response.json()["refresh_token"]
-

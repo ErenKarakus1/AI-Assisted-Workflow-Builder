@@ -8,6 +8,12 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.security import decode_token
 from app.db.mongo import database_dependency
 from app.domain.auth.repository import MongoUserRepository, UserRepository
+from app.domain.orgs.repository import (
+    MongoOrganizationMemberRepository,
+    MongoOrganizationRepository,
+    OrganizationMemberRepository,
+    OrganizationRepository,
+)
 from app.models.user import User
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -17,6 +23,18 @@ async def user_repository_dependency(
     database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
 ) -> UserRepository:
     return MongoUserRepository(database)
+
+
+async def organization_repository_dependency(
+    database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
+) -> OrganizationRepository:
+    return MongoOrganizationRepository(database)
+
+
+async def organization_member_repository_dependency(
+    database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
+) -> OrganizationMemberRepository:
+    return MongoOrganizationMemberRepository(database)
 
 
 async def current_user_dependency(
@@ -45,4 +63,3 @@ async def current_user_dependency(
         )
 
     return user
-
