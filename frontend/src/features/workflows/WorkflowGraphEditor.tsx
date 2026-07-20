@@ -14,7 +14,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 
-import type { Workflow, WorkflowEdge, WorkflowNode } from "../../types/api";
+import type { InstanceEvent, Workflow, WorkflowEdge, WorkflowInstance, WorkflowNode } from "../../types/api";
 
 type Props = {
   workflow: Workflow;
@@ -22,6 +22,8 @@ type Props = {
   onSave: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void;
   isValidatingDraft: boolean;
   onValidateDraft: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void;
+  selectedInstance: WorkflowInstance | null;
+  instanceEvents: InstanceEvent[];
 };
 
 type NodeKind = "start" | "approval" | "condition" | "delay" | "end";
@@ -44,10 +46,16 @@ export function WorkflowGraphEditor({
   onSave,
   isValidatingDraft,
   onValidateDraft,
+  selectedInstance,
+  instanceEvents,
 }: Props) {
   const isEditable = workflow.status === "draft";
   const initialNodes = useMemo(() => workflow.nodes.map(toFlowNode), [workflow.nodes]);
   const initialEdges = useMemo(() => workflow.edges.map(toFlowEdge), [workflow.edges]);
+  const progress = useMemo(
+    () => buildInstanceProgress(selectedInstance, instanceEvents),
+    [instanceEvents, selectedInstance],
+  );
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -180,7 +188,13 @@ export function WorkflowGraphEditor({
       <div className="editor-toolbar">
         <div>
           <strong>Graph editor</strong>
-          <span>{isEditable ? "Draft editing enabled" : "Active workflows are read-only"}</span>
+          <span>
+            {selectedInstance
+              ? `Viewing instance ${selectedInstance.id} progress`
+              : isEditable
+                ? "Draft editing enabled"
+                : "Active workflows are read-only"}
+          </span>
         </div>
         <div className="editor-actions">
           <button className="button button--ghost" type="button" disabled={!isEditable} onClick={deleteSelection}>
@@ -222,7 +236,7 @@ export function WorkflowGraphEditor({
       <div className="editor-grid">
         <div className="flow-canvas">
           <ReactFlow
-            nodes={nodes}
+            nodes={nodes.map((node) => decorateProgressNode(node, progress))}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
@@ -577,4 +591,57 @@ function parseConfigValue(value: string): string | number | boolean {
   }
   const numeric = Number(value);
   return value.trim() !== "" && Number.isFinite(numeric) ? numeric : value;
+}
+
+type InstanceProgress = {
+  activeNodeId: string | null;
+  failedNodeIds: Set<string>;
+  visitedNodeIds: Set<string>;
+};
+
+function buildInstanceProgress(
+  instance: WorkflowInstance | null,
+  events: InstanceEvent[],
+): InstanceProgress {
+  const failedNodeIds = new Set(
+    events
+      .filter((event) => event.type === "instance_failed" && event.node_id)
+      .map((event) => event.node_id as string),
+  );
+  const visitedNodeIds = new Set(
+    events
+      .filter((event) => event.type === "node_entered" && event.node_id)
+      .map((event) => event.node_id as string),
+  );
+
+  return {
+    activeNodeId: instance?.active_node_id ?? null,
+    failedNodeIds,
+    visitedNodeIds,
+  };
+}
+
+function decorateProgressNode(node: Node, progress: InstanceProgress): Node {
+  const status = nodeProgressStatus(node.id, progress);
+  return {
+    ...node,
+    className: status ? `workflow-node workflow-node--${status}` : "workflow-node",
+    data: {
+      ...node.data,
+      label: status ? `${node.data?.label ?? node.id} · ${status}` : node.data?.label,
+    },
+  };
+}
+
+function nodeProgressStatus(nodeId: string, progress: InstanceProgress): string | null {
+  if (progress.failedNodeIds.has(nodeId)) {
+    return "failed";
+  }
+  if (progress.activeNodeId === nodeId) {
+    return "active";
+  }
+  if (progress.visitedNodeIds.has(nodeId)) {
+    return "visited";
+  }
+  return null;
 }

@@ -190,6 +190,8 @@ export function WorkflowDetailPage() {
             onSave={(nodes, edges) => saveMutation.mutate({ nodes, edges })}
             isValidatingDraft={validateDraftMutation.isPending}
             onValidateDraft={(nodes, edges) => validateDraftMutation.mutate({ nodes, edges })}
+            selectedInstance={selectedInstance}
+            instanceEvents={eventsQuery.data ?? []}
           />
 
           <InstanceRunner

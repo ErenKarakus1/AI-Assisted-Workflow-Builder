@@ -401,6 +401,24 @@ textarea {
   font-weight: 700;
 }
 
+.react-flow__node.workflow-node--visited {
+  border-color: #65c3a4;
+  background: #f0faf6;
+  box-shadow: 0 0 0 2px rgb(101 195 164 / 20%);
+}
+
+.react-flow__node.workflow-node--active {
+  border-color: #f79009;
+  background: #fffbeb;
+  box-shadow: 0 0 0 3px rgb(247 144 9 / 28%);
+}
+
+.react-flow__node.workflow-node--failed {
+  border-color: #f04438;
+  background: #fff1f0;
+  box-shadow: 0 0 0 3px rgb(240 68 56 / 24%);
+}
+
 .panel-heading {
   border-bottom: 1px solid #edf1f6;
   color: #344054;
