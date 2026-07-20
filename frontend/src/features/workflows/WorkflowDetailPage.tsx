@@ -158,7 +158,7 @@ export function WorkflowDetailPage() {
           <div className="detail-grid">
             <article className="metric-card">
               <span>Status</span>
-              <strong>{workflow.status}</strong>
+              <strong>{humanize(workflow.status)}</strong>
             </article>
             <article className="metric-card">
               <span>Revision</span>

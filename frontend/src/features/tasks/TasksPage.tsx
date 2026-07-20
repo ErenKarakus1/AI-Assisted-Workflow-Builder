@@ -9,9 +9,15 @@ import { errorMessage } from "../../lib/errors";
 import type { OrganizationMember, Task, Workflow } from "../../types/api";
 import { useAuth } from "../auth/AuthProvider";
 
+type TaskStatusFilter = "all" | "pending" | "completed";
+type TaskAssignmentFilter = "all" | "actionable" | "user" | "role" | "oversight";
+
 export function TasksPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<TaskStatusFilter>("all");
+  const [assignmentFilter, setAssignmentFilter] = useState<TaskAssignmentFilter>("all");
   const organizationsQuery = useQuery({
     queryKey: ["organizations"],
     queryFn: listOrganizations,
@@ -52,14 +58,6 @@ export function TasksPage() {
     },
   });
 
-  const pendingTasks = useMemo(
-    () => tasksQuery.data?.filter((task) => task.status === "pending") ?? [],
-    [tasksQuery.data],
-  );
-  const completedTasks = useMemo(
-    () => tasksQuery.data?.filter((task) => task.status === "completed") ?? [],
-    [tasksQuery.data],
-  );
   const activeTaskId =
     approveMutation.variables?.id ?? rejectMutation.variables?.id ?? null;
   const workflowsById = useMemo(
@@ -67,6 +65,28 @@ export function TasksPage() {
     [workflowsQuery.data],
   );
   const canSeeAllTasks = selectedOrg?.role === "owner" || selectedOrg?.role === "admin";
+  const filteredTasks = useMemo(
+    () =>
+      (tasksQuery.data ?? []).filter((task) =>
+        taskMatchesFilters({
+          task,
+          workflowsById,
+          searchTerm,
+          statusFilter,
+          assignmentFilter,
+          isActionable: isTaskActionable(task, user?.id, selectedOrg?.role),
+        }),
+      ),
+    [assignmentFilter, searchTerm, selectedOrg?.role, statusFilter, tasksQuery.data, user?.id, workflowsById],
+  );
+  const pendingTasks = useMemo(
+    () => filteredTasks.filter((task) => task.status === "pending"),
+    [filteredTasks],
+  );
+  const completedTasks = useMemo(
+    () => filteredTasks.filter((task) => task.status === "completed"),
+    [filteredTasks],
+  );
 
   return (
     <section className="page-stack">
@@ -93,32 +113,63 @@ export function TasksPage() {
 
       {organizationId ? (
         <>
-          <TaskList
-            title={canSeeAllTasks ? "Pending approvals" : "My pending approvals"}
-            emptyText={tasksQuery.isLoading ? "Loading tasks..." : "No pending approval tasks for you."}
-            tasks={pendingTasks}
-            workflowsById={workflowsById}
-            members={membersQuery.data ?? []}
-            activeTaskId={activeTaskId}
-            isDeciding={approveMutation.isPending || rejectMutation.isPending}
-            showActions
-            isTaskActionable={(task) => isTaskActionable(task, user?.id, selectedOrg?.role)}
-            onApprove={(task) => approveMutation.mutate(task)}
-            onReject={(task) => rejectMutation.mutate(task)}
-          />
-          <TaskList
-            title={canSeeAllTasks ? "Completed approvals" : "My completed approvals"}
-            emptyText="No completed approval tasks yet."
-            tasks={completedTasks}
-            workflowsById={workflowsById}
-            members={membersQuery.data ?? []}
-            activeTaskId={activeTaskId}
-            isDeciding={false}
-            showActions={false}
-            isTaskActionable={() => false}
-            onApprove={() => undefined}
-            onReject={() => undefined}
-          />
+          <div className="filter-bar filter-bar--three">
+            <input
+              placeholder="Search tasks by workflow or approval"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as TaskStatusFilter)}>
+              <option value="all">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+            </select>
+            <select
+              value={assignmentFilter}
+              onChange={(event) => setAssignmentFilter(event.target.value as TaskAssignmentFilter)}
+            >
+              <option value="all">All assignments</option>
+              <option value="actionable">Actionable by me</option>
+              <option value="user">Assigned to users</option>
+              <option value="role">Assigned to roles</option>
+              {canSeeAllTasks ? <option value="oversight">Oversight only</option> : null}
+            </select>
+          </div>
+
+          {statusFilter !== "completed" ? (
+            <TaskList
+              title={canSeeAllTasks ? "Pending approvals" : "My pending approvals"}
+              emptyText={tasksQuery.isLoading ? "Loading tasks..." : "No pending approvals match your filters."}
+              tasks={pendingTasks}
+              workflowsById={workflowsById}
+              members={membersQuery.data ?? []}
+              currentUserId={user?.id}
+              currentRole={selectedOrg?.role}
+              activeTaskId={activeTaskId}
+              isDeciding={approveMutation.isPending || rejectMutation.isPending}
+              showActions
+              isTaskActionable={(task) => isTaskActionable(task, user?.id, selectedOrg?.role)}
+              onApprove={(task) => approveMutation.mutate(task)}
+              onReject={(task) => rejectMutation.mutate(task)}
+            />
+          ) : null}
+          {statusFilter !== "pending" ? (
+            <TaskList
+              title={canSeeAllTasks ? "Completed approvals" : "My completed approvals"}
+              emptyText="No completed approvals match your filters."
+              tasks={completedTasks}
+              workflowsById={workflowsById}
+              members={membersQuery.data ?? []}
+              currentUserId={user?.id}
+              currentRole={selectedOrg?.role}
+              activeTaskId={activeTaskId}
+              isDeciding={false}
+              showActions={false}
+              isTaskActionable={() => false}
+              onApprove={() => undefined}
+              onReject={() => undefined}
+            />
+          ) : null}
         </>
       ) : (
         <p className="muted">Create an organization before reviewing tasks.</p>
@@ -133,6 +184,8 @@ function TaskList({
   tasks,
   workflowsById,
   members,
+  currentUserId,
+  currentRole,
   activeTaskId,
   isDeciding,
   showActions,
@@ -145,6 +198,8 @@ function TaskList({
   tasks: Task[];
   workflowsById: Map<string, Workflow>;
   members: OrganizationMember[];
+  currentUserId: string | undefined;
+  currentRole: string | undefined;
   activeTaskId: string | null;
   isDeciding: boolean;
   showActions: boolean;
@@ -164,8 +219,8 @@ function TaskList({
               <span>
                 Instance {shortId(task.instance_id)} - task revision {task.revision}
               </span>
-              <span>{assignmentLabel(task, members)}</span>
-              {task.decision ? <span>Decision: {task.decision}</span> : null}
+              <span>{assignmentLabel(task, members, currentUserId, currentRole)}</span>
+              {task.decision ? <span>Decision: {humanize(task.decision)}</span> : null}
             </div>
             <div className="row-actions">
               <Link className="text-link" to={`/workflows/${task.organization_id}/${task.workflow_id}`}>
@@ -214,12 +269,58 @@ function workflowName(task: Task, workflowsById: Map<string, Workflow>): string 
   return workflowsById.get(task.workflow_id)?.name ?? "Workflow approval";
 }
 
-function assignmentLabel(task: Task, members: OrganizationMember[]): string {
+function taskMatchesFilters({
+  task,
+  workflowsById,
+  searchTerm,
+  statusFilter,
+  assignmentFilter,
+  isActionable,
+}: {
+  task: Task;
+  workflowsById: Map<string, Workflow>;
+  searchTerm: string;
+  statusFilter: TaskStatusFilter;
+  assignmentFilter: TaskAssignmentFilter;
+  isActionable: boolean;
+}): boolean {
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const searchableText = [
+    workflowName(task, workflowsById),
+    taskLabel(task, workflowsById),
+    task.instance_id,
+    task.assigned_role ?? "",
+    task.assigned_user_id ?? "",
+  ].join(" ").toLowerCase();
+  const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
+  const matchesStatus = statusFilter === "all" || task.status === statusFilter;
+  const matchesAssignment =
+    assignmentFilter === "all" ||
+    (assignmentFilter === "actionable" && isActionable) ||
+    (assignmentFilter === "user" && Boolean(task.assigned_user_id)) ||
+    (assignmentFilter === "role" && Boolean(task.assigned_role)) ||
+    (assignmentFilter === "oversight" && !isActionable);
+
+  return matchesSearch && matchesStatus && matchesAssignment;
+}
+
+function assignmentLabel(
+  task: Task,
+  members: OrganizationMember[],
+  currentUserId: string | undefined,
+  currentRole: string | undefined,
+): string {
   if (task.assigned_user_id) {
     const assignedMember = members.find((member) => member.user_id === task.assigned_user_id);
+    if (task.assigned_user_id === currentUserId) {
+      return "Assigned to you";
+    }
     return `Assigned to ${assignedMember ? memberLabel(assignedMember) : `user ${shortId(task.assigned_user_id)}`}`;
   }
   if (task.assigned_role) {
+    if (task.assigned_role === currentRole) {
+      return `Assigned to your ${humanize(task.assigned_role)} role`;
+    }
     return `Assigned to ${humanize(task.assigned_role)} role`;
   }
   return "Unassigned";

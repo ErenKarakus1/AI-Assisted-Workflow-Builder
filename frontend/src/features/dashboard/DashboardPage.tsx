@@ -67,7 +67,7 @@ export function DashboardPage() {
               <div className="compact-row dashboard-row" key={instance.id}>
                 <strong>{workflowName(instance.workflow_id, activity.workflows)}</strong>
                 <span>
-                  {instance.status} - instance {shortId(instance.id)}
+                  {humanize(instance.status)} - instance {shortId(instance.id)}
                 </span>
                 <Link className="text-link" to={`/workflows/${instance.organization_id}/${instance.workflow_id}`}>
                   Open run
@@ -88,7 +88,7 @@ export function DashboardPage() {
               .map((task) => (
                 <div className="compact-row dashboard-row" key={task.id}>
                   <strong>{workflowName(task.workflow_id, activity.workflows)}</strong>
-                  <span>{task.assigned_role ? `Assigned to ${humanize(task.assigned_role)} role` : "Approval needed"}</span>
+                  <span>{task.assigned_role ? `Assigned to ${humanize(task.assigned_role)} role` : "Assigned to a user"}</span>
                   <Link className="text-link" to="/tasks">
                     Review task
                   </Link>
