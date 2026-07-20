@@ -317,43 +317,27 @@ function NodeConfigPanel({
       </label>
 
       {kind === "approval" ? (
-        <>
-          <label>
-            Assigned user ID
-            <input
-              disabled={!isEditable}
-              value={stringValue(data.assigned_user_id)}
-              onChange={(event) =>
-                onChange({
-                  ...data,
-                  assigned_user_id: event.target.value || undefined,
-                  assigned_role: event.target.value ? undefined : data.assigned_role,
-                })
-              }
-            />
-          </label>
-          <label>
-            Assigned role
-            <select
-              disabled={!isEditable}
-              value={stringValue(data.assigned_role)}
-              onChange={(event) =>
-                onChange({
-                  ...data,
-                  assigned_role: event.target.value || undefined,
-                  assigned_user_id: event.target.value ? undefined : data.assigned_user_id,
-                })
-              }
-            >
-              <option value="">Select role</option>
-              {approvalRoles.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-          </label>
-        </>
+        <label>
+          Assigned role
+          <select
+            disabled={!isEditable}
+            value={stringValue(data.assigned_role)}
+            onChange={(event) =>
+              onChange({
+                ...data,
+                assigned_role: event.target.value || undefined,
+                assigned_user_id: undefined,
+              })
+            }
+          >
+            <option value="">Select role</option>
+            {approvalRoles.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+        </label>
       ) : null}
 
       {kind === "condition" ? (

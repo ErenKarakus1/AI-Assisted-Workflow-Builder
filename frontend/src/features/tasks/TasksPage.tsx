@@ -4,8 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { listOrganizations } from "../../api/organizations";
 import { approveTask, listTasks, rejectTask } from "../../api/tasks";
+import { listWorkflows } from "../../api/workflows";
 import { errorMessage } from "../../lib/errors";
-import type { Task } from "../../types/api";
+import type { Task, Workflow } from "../../types/api";
 
 export function TasksPage() {
   const queryClient = useQueryClient();
@@ -23,6 +24,11 @@ export function TasksPage() {
   const tasksQuery = useQuery({
     queryKey: ["tasks", organizationId],
     queryFn: () => listTasks(organizationId),
+    enabled: Boolean(organizationId),
+  });
+  const workflowsQuery = useQuery({
+    queryKey: ["workflows", organizationId],
+    queryFn: () => listWorkflows(organizationId),
     enabled: Boolean(organizationId),
   });
 
@@ -49,6 +55,10 @@ export function TasksPage() {
   );
   const activeTaskId =
     approveMutation.variables?.id ?? rejectMutation.variables?.id ?? null;
+  const workflowsById = useMemo(
+    () => new Map((workflowsQuery.data ?? []).map((workflow) => [workflow.id, workflow])),
+    [workflowsQuery.data],
+  );
 
   return (
     <section className="page-stack">
@@ -79,6 +89,7 @@ export function TasksPage() {
             title="Pending approvals"
             emptyText={tasksQuery.isLoading ? "Loading tasks..." : "No pending approval tasks."}
             tasks={pendingTasks}
+            workflowsById={workflowsById}
             activeTaskId={activeTaskId}
             isDeciding={approveMutation.isPending || rejectMutation.isPending}
             showActions
@@ -89,6 +100,7 @@ export function TasksPage() {
             title="Completed approvals"
             emptyText="No completed approval tasks yet."
             tasks={completedTasks}
+            workflowsById={workflowsById}
             activeTaskId={activeTaskId}
             isDeciding={false}
             showActions={false}
@@ -107,6 +119,7 @@ function TaskList({
   title,
   emptyText,
   tasks,
+  workflowsById,
   activeTaskId,
   isDeciding,
   showActions,
@@ -116,6 +129,7 @@ function TaskList({
   title: string;
   emptyText: string;
   tasks: Task[];
+  workflowsById: Map<string, Workflow>;
   activeTaskId: string | null;
   isDeciding: boolean;
   showActions: boolean;
@@ -127,11 +141,12 @@ function TaskList({
       <div className="panel-heading">{title}</div>
       {tasks.length ? (
         tasks.map((task) => (
-          <div className="list-row" key={task.id}>
+          <div className="list-row approval-card" key={task.id}>
             <div>
-              <strong>{taskLabel(task)}</strong>
+              <p className="eyebrow">{workflowName(task, workflowsById)}</p>
+              <strong>{taskLabel(task, workflowsById)}</strong>
               <span>
-                Instance {task.instance_id} - revision {task.revision}
+                Instance {shortId(task.instance_id)} - task revision {task.revision}
               </span>
               <span>{assignmentLabel(task)}</span>
               {task.decision ? <span>Decision: {task.decision}</span> : null}
@@ -170,16 +185,33 @@ function TaskList({
   );
 }
 
-function taskLabel(task: Task): string {
-  return `Approval at ${task.node_id}`;
+function taskLabel(task: Task, workflowsById: Map<string, Workflow>): string {
+  const workflow = workflowsById.get(task.workflow_id);
+  const node = workflow?.nodes.find((workflowNode) => workflowNode.id === task.node_id);
+  const nodeName = node ? stringValue(node.data.label).trim() : "";
+  return nodeName ? nodeName : `Approval at ${task.node_id}`;
+}
+
+function workflowName(task: Task, workflowsById: Map<string, Workflow>): string {
+  return workflowsById.get(task.workflow_id)?.name ?? "Workflow approval";
 }
 
 function assignmentLabel(task: Task): string {
   if (task.assigned_user_id) {
-    return `Assigned user: ${task.assigned_user_id}`;
+    return `Assigned to user ${shortId(task.assigned_user_id)}`;
   }
   if (task.assigned_role) {
-    return `Assigned role: ${task.assigned_role}`;
+    return `Assigned to ${task.assigned_role}`;
   }
   return "Unassigned";
+}
+
+function shortId(value: string): string {
+  return value.length > 8 ? value.slice(0, 8) : value;
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+    ? String(value)
+    : "";
 }
