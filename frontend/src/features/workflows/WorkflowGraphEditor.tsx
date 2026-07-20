@@ -62,7 +62,7 @@ export function WorkflowGraphEditor({
   organizationMembers,
   canManageWorkflow,
 }: Props) {
-  const isEditable = canManageWorkflow && workflow.status === "draft";
+  const isEditable = canManageWorkflow && !selectedInstance && workflow.status === "draft";
   const initialNodes = useMemo(() => workflow.nodes.map(toFlowNode), [workflow.nodes]);
   const initialEdges = useMemo(() => workflow.edges.map(toFlowEdge), [workflow.edges]);
   const progress = useMemo(
@@ -211,7 +211,7 @@ export function WorkflowGraphEditor({
           <strong>Graph editor</strong>
           <span>
             {selectedInstance
-              ? `Viewing instance ${selectedInstance.id} progress`
+              ? `Viewing instance ${selectedInstance.id} graph snapshot`
               : isEditable
                 ? "Draft editing enabled"
                 : canManageWorkflow

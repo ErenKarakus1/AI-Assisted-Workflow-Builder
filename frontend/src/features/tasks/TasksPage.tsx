@@ -49,12 +49,16 @@ export function TasksPage() {
     mutationFn: (task: Task) => approveTask(organizationId, task),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["tasks", organizationId] });
+      await queryClient.invalidateQueries({ queryKey: ["workflow-instances", organizationId] });
+      await queryClient.invalidateQueries({ queryKey: ["instance-events", organizationId] });
     },
   });
   const rejectMutation = useMutation({
     mutationFn: (task: Task) => rejectTask(organizationId, task),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["tasks", organizationId] });
+      await queryClient.invalidateQueries({ queryKey: ["workflow-instances", organizationId] });
+      await queryClient.invalidateQueries({ queryKey: ["instance-events", organizationId] });
     },
   });
 

@@ -185,6 +185,43 @@ def test_start_simple_workflow_instance_completes(client: TestClient) -> None:
     assert response.json()["status"] == "completed"
     assert response.json()["context"]["result"] == "approved"
     assert response.json()["input"] == {"amount": 250}
+    assert response.json()["workflow_revision"] == 2
+    assert response.json()["workflow_nodes"][1]["data"]["result"] == "approved"
+
+
+def test_instance_keeps_workflow_graph_snapshot(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    workflow_id = create_and_activate_workflow(client, token, org_id, simple_workflow_payload())
+    instance_response = client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}/instances",
+        json={"input": {"amount": 250}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}/deactivate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    current_workflow = client.get(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    ).json()
+    update_payload = simple_workflow_payload()
+    update_payload["revision"] = current_workflow["revision"]
+    update_payload["nodes"][1]["data"]["result"] = "changed"
+    client.put(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}",
+        json=update_payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = client.get(
+        f"/api/orgs/{org_id}/instances/{instance_response.json()['id']}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["workflow_revision"] == 2
+    assert response.json()["workflow_nodes"][1]["data"]["result"] == "approved"
 
 
 def test_member_can_start_active_workflow_instance(client: TestClient) -> None:

@@ -4,6 +4,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from app.models.workflow import WorkflowEdge, WorkflowNode
+
 
 class WorkflowInstanceStatus(StrEnum):
     RUNNING = "running"
@@ -30,6 +32,8 @@ class WorkflowInstance(BaseModel):
     organization_id: str
     workflow_id: str
     workflow_revision: int
+    workflow_nodes: list[WorkflowNode] = Field(default_factory=list)
+    workflow_edges: list[WorkflowEdge] = Field(default_factory=list)
     status: WorkflowInstanceStatus = WorkflowInstanceStatus.RUNNING
     active_node_id: str | None = None
     context: dict = Field(default_factory=dict)

@@ -90,6 +90,8 @@ export type WorkflowInstance = {
   organization_id: string;
   workflow_id: string;
   workflow_revision: number;
+  workflow_nodes: WorkflowNode[];
+  workflow_edges: WorkflowEdge[];
   status: WorkflowInstanceStatus;
   active_node_id: string | null;
   context: Record<string, unknown>;

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 from app.models.instance import InstanceEventType, WorkflowInstanceStatus
+from app.models.workflow import WorkflowEdge, WorkflowNode
 
 
 class WorkflowInstanceCreate(BaseModel):
@@ -12,6 +13,8 @@ class WorkflowInstanceRead(BaseModel):
     organization_id: str
     workflow_id: str
     workflow_revision: int
+    workflow_nodes: list[WorkflowNode]
+    workflow_edges: list[WorkflowEdge]
     status: WorkflowInstanceStatus
     active_node_id: str | None
     context: dict
@@ -27,4 +30,3 @@ class InstanceEventRead(BaseModel):
     type: InstanceEventType
     node_id: str | None
     data: dict
-

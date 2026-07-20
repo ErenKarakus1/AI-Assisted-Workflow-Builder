@@ -137,6 +137,46 @@ export function WorkflowDetailPage() {
     instancesQuery.data?.find((instance) => instance.id === effectiveSelectedInstanceId) ??
     startInstanceMutation.data ??
     null;
+  const hasInstanceGraphSnapshot = Boolean(
+    selectedInstance?.workflow_nodes.length || selectedInstance?.workflow_edges.length,
+  );
+  const displayWorkflow =
+    workflow && selectedInstance && hasInstanceGraphSnapshot
+      ? {
+          ...workflow,
+          nodes: selectedInstance.workflow_nodes,
+          edges: selectedInstance.workflow_edges,
+          revision: selectedInstance.workflow_revision,
+        }
+      : workflow;
+  const isViewingInstanceSnapshot = Boolean(
+    workflow && selectedInstance && hasInstanceGraphSnapshot && selectedInstance.workflow_revision !== workflow.revision,
+  );
+  const canCopySelectedSnapshot =
+    Boolean(selectedInstance && hasInstanceGraphSnapshot) && canManageWorkflow && workflow?.status === "draft";
+  const copySelectedSnapshotToDraft = useCallback(() => {
+    if (!selectedInstance || !hasInstanceGraphSnapshot) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        "Copy this instance graph snapshot to the current draft? This will replace the current draft graph.",
+      )
+    ) {
+      return;
+    }
+
+    saveMutation.mutate(
+      {
+        nodes: selectedInstance.workflow_nodes,
+        edges: selectedInstance.workflow_edges,
+      },
+      {
+        onSuccess: () => setSelectedInstanceId(null),
+      },
+    );
+  }, [hasInstanceGraphSnapshot, saveMutation, selectedInstance]);
 
   return (
     <section className="page-stack">
@@ -153,7 +193,7 @@ export function WorkflowDetailPage() {
       {workflowQuery.isLoading ? <p className="muted">Loading...</p> : null}
       {workflowQuery.isError ? <p className="form-error">Could not load workflow.</p> : null}
 
-      {workflow ? (
+      {workflow && displayWorkflow ? (
         <>
           <div className="detail-grid">
             <article className="metric-card">
@@ -227,6 +267,36 @@ export function WorkflowDetailPage() {
           {hasUnsavedGraphChanges ? (
             <p className="warning-panel">Save the graph before activating or starting an instance.</p>
           ) : null}
+          {selectedInstance && hasInstanceGraphSnapshot ? (
+            <div className={isViewingInstanceSnapshot ? "warning-panel snapshot-panel" : "help-panel snapshot-panel"}>
+              <p>
+                Viewing graph snapshot from workflow revision {selectedInstance.workflow_revision}
+                {isViewingInstanceSnapshot ? `, not the current revision ${workflow.revision}.` : "."}
+              </p>
+              <div className="button-group">
+                {canCopySelectedSnapshot ? (
+                  <button
+                    className="button button--secondary button--small"
+                    type="button"
+                    disabled={saveMutation.isPending}
+                    onClick={copySelectedSnapshotToDraft}
+                  >
+                    {saveMutation.isPending ? "Copying..." : "Copy to current draft"}
+                  </button>
+                ) : null}
+                <button className="button button--ghost button--small" type="button" onClick={() => setSelectedInstanceId(null)}>
+                  View current graph
+                </button>
+              </div>
+            </div>
+          ) : selectedInstance ? (
+            <div className="warning-panel snapshot-panel">
+              <p>This instance was created before graph snapshots were stored, so the current graph is shown instead.</p>
+              <button className="button button--ghost button--small" type="button" onClick={() => setSelectedInstanceId(null)}>
+                View current graph
+              </button>
+            </div>
+          ) : null}
 
           {validateMutation.data ? <ValidationPanel result={validateMutation.data} nodes={workflow.nodes} /> : null}
           {validateDraftMutation.data ? (
@@ -263,7 +333,8 @@ export function WorkflowDetailPage() {
           ) : null}
 
           <WorkflowGraphEditor
-            workflow={workflow}
+            key={selectedInstance ? `instance-${selectedInstance.id}` : `workflow-${workflow.id}-${workflow.revision}`}
+            workflow={displayWorkflow}
             isSaving={saveMutation.isPending}
             onSave={(nodes, edges) => saveMutation.mutate({ nodes, edges })}
             isValidatingDraft={validateDraftMutation.isPending}
@@ -290,6 +361,7 @@ export function WorkflowDetailPage() {
             selectedInstance={selectedInstance}
             selectedInstanceId={selectedInstanceId}
             onSelectInstance={setSelectedInstanceId}
+            onClearSelectedInstance={() => setSelectedInstanceId(null)}
             events={eventsQuery.data ?? []}
             areEventsLoading={eventsQuery.isLoading}
           />
@@ -297,9 +369,9 @@ export function WorkflowDetailPage() {
           <div className="split-panel">
             <GraphList
               title="Nodes"
-              items={workflow.nodes.map((node) => `${nodeDisplayName(node.id, new Map(workflow.nodes.map((item) => [item.id, item])))} - ${humanize(node.type)}`)}
+              items={displayWorkflow.nodes.map((node) => `${nodeDisplayName(node.id, new Map(displayWorkflow.nodes.map((item) => [item.id, item])))} - ${humanize(node.type)}`)}
             />
-            <ConnectionList nodes={workflow.nodes} edges={workflow.edges} />
+            <ConnectionList nodes={displayWorkflow.nodes} edges={displayWorkflow.edges} />
           </div>
         </>
       ) : null}
@@ -322,6 +394,7 @@ function InstanceRunner({
   selectedInstance,
   selectedInstanceId,
   onSelectInstance,
+  onClearSelectedInstance,
   events,
   areEventsLoading,
 }: {
@@ -339,6 +412,7 @@ function InstanceRunner({
   selectedInstance: WorkflowInstance | null;
   selectedInstanceId: string | null;
   onSelectInstance: (id: string) => void;
+  onClearSelectedInstance: () => void;
   events: InstanceEvent[];
   areEventsLoading: boolean;
 }) {
@@ -437,12 +511,21 @@ function InstanceRunner({
       {selectedInstance ? (
         <div className="split-panel instance-panels">
           <article className="list-panel">
-            <div className="panel-heading">Selected instance</div>
+            <div className="panel-heading">
+              <span>Selected instance</span>
+              <button className="button button--ghost button--small" type="button" onClick={onClearSelectedInstance}>
+                View current graph
+              </button>
+            </div>
             <div className="compact-row instance-summary">
               <strong>{humanize(selectedInstance.status)}</strong>
               <span>Instance {shortId(selectedInstance.id)}</span>
               <span>Active node: {selectedInstance.active_node_id ?? "None"}</span>
               <span>Workflow revision: {selectedInstance.workflow_revision}</span>
+              <span>
+                Graph snapshot:{" "}
+                {selectedInstance.workflow_nodes.length || selectedInstance.workflow_edges.length ? "Stored" : "Not stored"}
+              </span>
               {selectedInstance.status === "waiting" ? (
                 <Link className="text-link" to="/tasks">
                   Review approval tasks

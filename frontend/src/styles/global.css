@@ -442,6 +442,25 @@ textarea {
   padding: 10px;
 }
 
+.snapshot-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.snapshot-panel p {
+  margin: 0;
+}
+
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .field-error {
   color: #b42318;
   font-size: 0.86rem;
@@ -550,7 +569,7 @@ textarea {
 }
 
 .approval-card {
-  align-items: flex-start;
+  align-items: center;
   background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
 }
 
@@ -654,22 +673,27 @@ textarea {
 .flow-canvas,
 .flow-canvas .react-flow,
 .flow-canvas .react-flow__renderer,
-.flow-canvas .react-flow__pane {
-  cursor: default;
+.flow-canvas .react-flow__pane,
+.flow-canvas .react-flow__viewport,
+.flow-canvas .react-flow__selectionpane,
+.flow-canvas .react-flow__edges,
+.flow-canvas .react-flow__edges svg {
+  cursor: default !important;
 }
 
-.flow-canvas .react-flow__pane.draggable {
-  cursor: grab;
+.flow-canvas .react-flow__pane.draggable,
+.flow-canvas .react-flow__pane.selection {
+  cursor: grab !important;
 }
 
 .flow-canvas .react-flow__pane.dragging {
-  cursor: grabbing;
+  cursor: grabbing !important;
 }
 
 .flow-canvas .react-flow__node,
 .flow-canvas .react-flow__edge,
 .flow-canvas .react-flow__handle {
-  cursor: pointer;
+  cursor: pointer !important;
 }
 
 .config-panel {

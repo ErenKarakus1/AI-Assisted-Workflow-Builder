@@ -54,6 +54,8 @@ class WorkflowInstanceService:
             organization_id=organization_id,
             workflow_id=workflow.id,
             workflow_revision=workflow.revision,
+            workflow_nodes=[node.model_copy(deep=True) for node in workflow.nodes],
+            workflow_edges=[edge.model_copy(deep=True) for edge in workflow.edges],
             input=payload.input,
             started_by_user_id=user.id,
         )
@@ -120,6 +122,8 @@ class WorkflowInstanceService:
             organization_id=instance.organization_id,
             workflow_id=instance.workflow_id,
             workflow_revision=instance.workflow_revision,
+            workflow_nodes=instance.workflow_nodes,
+            workflow_edges=instance.workflow_edges,
             status=instance.status,
             active_node_id=instance.active_node_id,
             context=instance.context,
