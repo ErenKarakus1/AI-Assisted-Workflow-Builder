@@ -3,9 +3,10 @@ from datetime import UTC, datetime
 from app.domain.orgs.repository import OrganizationMemberRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
 from app.domain.workflows.repository import WorkflowRepository
+from app.domain.workflows.validation import WorkflowValidator
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowStatus
-from app.schemas.workflow import WorkflowCreate, WorkflowRead, WorkflowUpdate
+from app.schemas.workflow import WorkflowCreate, WorkflowRead, WorkflowUpdate, WorkflowValidationResult
 
 
 class WorkflowNotFoundError(Exception):
@@ -14,6 +15,11 @@ class WorkflowNotFoundError(Exception):
 
 class WorkflowRevisionConflictError(Exception):
     pass
+
+
+class WorkflowValidationError(Exception):
+    def __init__(self, result: WorkflowValidationResult) -> None:
+        self.result = result
 
 
 class WorkflowService:
@@ -76,6 +82,29 @@ class WorkflowService:
             raise WorkflowRevisionConflictError
         await self.workflows.delete(workflow.id)
 
+    async def validate(
+        self,
+        organization_id: str,
+        workflow_id: str,
+        user: User,
+    ) -> WorkflowValidationResult:
+        workflow = await self._get_for_organization(organization_id, workflow_id, user)
+        return WorkflowValidator().validate(workflow)
+
+    async def activate(self, organization_id: str, workflow_id: str, user: User) -> WorkflowRead:
+        workflow = await self._get_for_organization(organization_id, workflow_id, user)
+        if workflow.status != WorkflowStatus.DRAFT:
+            raise WorkflowRevisionConflictError
+
+        validation_result = WorkflowValidator().validate(workflow)
+        if not validation_result.is_valid:
+            raise WorkflowValidationError(validation_result)
+
+        workflow.status = WorkflowStatus.ACTIVE
+        workflow.revision += 1
+        workflow.updated_at = datetime.now(UTC)
+        return self._read(await self.workflows.update(workflow))
+
     async def _ensure_membership(self, organization_id: str, user: User) -> None:
         membership = await self.members.get_by_user_and_org(user.id, organization_id)
         if not membership:
@@ -103,4 +132,3 @@ class WorkflowService:
             edges=workflow.edges,
             revision=workflow.revision,
         )
-

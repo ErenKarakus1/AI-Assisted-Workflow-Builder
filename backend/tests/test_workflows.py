@@ -81,6 +81,41 @@ def workflow_payload(name: str = "Employee Onboarding") -> dict:
     }
 
 
+def approval_workflow_payload(name: str = "Approval Flow") -> dict:
+    return {
+        "name": name,
+        "nodes": [
+            {"id": "start-1", "type": "start", "position": {"x": 0, "y": 0}, "data": {}},
+            {"id": "approval-1", "type": "approval", "position": {"x": 160, "y": 0}, "data": {}},
+            {"id": "approved-end", "type": "end", "position": {"x": 320, "y": -80}, "data": {}},
+            {"id": "rejected-end", "type": "end", "position": {"x": 320, "y": 80}, "data": {}},
+        ],
+        "edges": [
+            {
+                "id": "edge-start-approval",
+                "source": "start-1",
+                "target": "approval-1",
+                "label": None,
+                "data": {},
+            },
+            {
+                "id": "edge-approve",
+                "source": "approval-1",
+                "target": "approved-end",
+                "label": "approve",
+                "data": {},
+            },
+            {
+                "id": "edge-reject",
+                "source": "approval-1",
+                "target": "rejected-end",
+                "label": "reject",
+                "data": {},
+            },
+        ],
+    }
+
+
 def test_create_and_get_workflow(client: TestClient) -> None:
     token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
 
@@ -193,3 +228,134 @@ def test_delete_workflow(client: TestClient) -> None:
     assert delete_response.status_code == 204
     assert get_response.status_code == 404
 
+
+def test_validate_valid_workflow(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=workflow_payload(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{create_response.json()['id']}/validate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"is_valid": True, "errors": [], "warnings": []}
+
+
+def test_validate_reports_unreachable_node(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    payload = workflow_payload()
+    payload["nodes"].append(
+        {"id": "orphan-end", "type": "end", "position": {"x": 500, "y": 0}, "data": {}}
+    )
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{create_response.json()['id']}/validate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_valid"] is False
+    assert response.json()["errors"][0]["code"] == "unreachable_node"
+
+
+def test_condition_requires_true_and_false_branches(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    payload = {
+        "name": "Conditional Flow",
+        "nodes": [
+            {"id": "start-1", "type": "start", "position": {}, "data": {}},
+            {"id": "condition-1", "type": "condition", "position": {}, "data": {}},
+            {"id": "end-1", "type": "end", "position": {}, "data": {}},
+        ],
+        "edges": [
+            {"id": "edge-1", "source": "start-1", "target": "condition-1", "label": None, "data": {}},
+            {"id": "edge-2", "source": "condition-1", "target": "end-1", "label": "true", "data": {}},
+        ],
+    }
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{create_response.json()['id']}/validate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_valid"] is False
+    assert any(error["code"] == "condition_missing_branch" for error in response.json()["errors"])
+
+
+def test_activate_valid_workflow(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=approval_workflow_payload(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{create_response.json()['id']}/activate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "active"
+    assert response.json()["revision"] == 2
+
+
+def test_activate_invalid_workflow_returns_validation_errors(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json={
+            "name": "Invalid Flow",
+            "nodes": [{"id": "start-1", "type": "start", "position": {}, "data": {}}],
+            "edges": [],
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{create_response.json()['id']}/activate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["is_valid"] is False
+
+
+def test_active_workflow_cannot_be_updated(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=approval_workflow_payload(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    workflow_id = create_response.json()["id"]
+    activated_response = client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}/activate",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    update_payload = approval_workflow_payload("Edited Active Flow")
+    update_payload["revision"] = activated_response.json()["revision"]
+
+    response = client.put(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}",
+        json=update_payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 409

@@ -25,3 +25,15 @@ class WorkflowRead(BaseModel):
     edges: list[WorkflowEdge]
     revision: int
 
+
+class WorkflowValidationIssue(BaseModel):
+    code: str
+    message: str
+    node_id: str | None = None
+    edge_id: str | None = None
+
+
+class WorkflowValidationResult(BaseModel):
+    is_valid: bool
+    errors: list[WorkflowValidationIssue] = Field(default_factory=list)
+    warnings: list[WorkflowValidationIssue] = Field(default_factory=list)

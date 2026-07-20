@@ -14,9 +14,10 @@ from app.domain.workflows.service import (
     WorkflowNotFoundError,
     WorkflowRevisionConflictError,
     WorkflowService,
+    WorkflowValidationError,
 )
 from app.models.user import User
-from app.schemas.workflow import WorkflowCreate, WorkflowRead, WorkflowUpdate
+from app.schemas.workflow import WorkflowCreate, WorkflowRead, WorkflowUpdate, WorkflowValidationResult
 
 router = APIRouter(prefix="/orgs/{organization_id}/workflows", tags=["workflows"])
 
@@ -68,6 +69,43 @@ async def get_workflow(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
 
 
+@router.post("/{workflow_id}/validate", response_model=WorkflowValidationResult)
+async def validate_workflow(
+    organization_id: str,
+    workflow_id: str,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+) -> WorkflowValidationResult:
+    try:
+        return await service.validate(organization_id, workflow_id, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
+
+
+@router.post("/{workflow_id}/activate", response_model=WorkflowRead)
+async def activate_workflow(
+    organization_id: str,
+    workflow_id: str,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+) -> WorkflowRead:
+    try:
+        return await service.activate(organization_id, workflow_id, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
+    except WorkflowRevisionConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Workflow revision conflict") from exc
+    except WorkflowValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=exc.result.model_dump(),
+        ) from exc
+
+
 @router.put("/{workflow_id}", response_model=WorkflowRead)
 async def update_workflow(
     organization_id: str,
@@ -103,4 +141,3 @@ async def delete_workflow(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Workflow revision conflict") from exc
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
