@@ -34,6 +34,7 @@ const conditionOperators = [
   "less_than_or_equal",
   "contains",
 ];
+const approvalRoles = ["manager", "finance", "hr", "legal", "admin", "member"];
 
 export function WorkflowGraphEditor({ workflow, isSaving, onSave }: Props) {
   const isEditable = workflow.status === "draft";
@@ -83,14 +84,14 @@ export function WorkflowGraphEditor({ workflow, isSaving, onSave }: Props) {
           {
             ...connection,
             id: `edge-${connection.source}-${connection.target}-${Date.now()}`,
-            label: null,
+            label: defaultEdgeLabel(sourceNodeType(nodes, connection.source)),
             data: {},
           },
           current,
         ),
       );
     },
-    [isEditable],
+    [isEditable, nodes],
   );
 
   function addNode(kind: NodeKind) {
@@ -102,7 +103,7 @@ export function WorkflowGraphEditor({ workflow, isSaving, onSave }: Props) {
         type: "default",
         position: { x: 120 + current.length * 40, y: 120 + current.length * 24 },
         data: {
-          label: `${kind}: ${id}`,
+          label: displayLabel(kind, id, defaultNodeData(kind)),
           workflowType: kind,
           workflowData: defaultNodeData(kind),
         },
@@ -140,6 +141,7 @@ export function WorkflowGraphEditor({ workflow, isSaving, onSave }: Props) {
               ...node,
               data: {
                 ...node.data,
+                label: displayLabel(workflowType(node), node.id, nextData),
                 workflowData: nextData,
               },
             }
@@ -240,7 +242,12 @@ export function WorkflowGraphEditor({ workflow, isSaving, onSave }: Props) {
               onChange={updateSelectedNodeData}
             />
           ) : selectedEdge ? (
-            <EdgeConfigPanel edge={selectedEdge} isEditable={isEditable} onChange={updateSelectedEdgeLabel} />
+            <EdgeConfigPanel
+              edge={selectedEdge}
+              sourceType={sourceNodeType(nodes, selectedEdge.source)}
+              isEditable={isEditable}
+              onChange={updateSelectedEdgeLabel}
+            />
           ) : (
             <p className="muted">Select a node or edge to edit its configuration.</p>
           )}
@@ -266,9 +273,18 @@ function NodeConfigPanel({
     <div className="config-stack">
       <div>
         <p className="eyebrow">Node</p>
-        <h3>{kind}</h3>
+        <h3>{displayLabel(kind, node.id, data)}</h3>
         <code>{node.id}</code>
       </div>
+
+      <label>
+        Name
+        <input
+          disabled={!isEditable}
+          value={stringValue(data.label)}
+          onChange={(event) => onChange({ ...data, label: event.target.value })}
+        />
+      </label>
 
       {kind === "approval" ? (
         <>
@@ -288,7 +304,7 @@ function NodeConfigPanel({
           </label>
           <label>
             Assigned role
-            <input
+            <select
               disabled={!isEditable}
               value={stringValue(data.assigned_role)}
               onChange={(event) =>
@@ -298,7 +314,14 @@ function NodeConfigPanel({
                   assigned_user_id: event.target.value ? undefined : data.assigned_user_id,
                 })
               }
-            />
+            >
+              <option value="">Select role</option>
+              {approvalRoles.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
           </label>
         </>
       ) : null}
@@ -382,13 +405,17 @@ function NodeConfigPanel({
 
 function EdgeConfigPanel({
   edge,
+  sourceType,
   isEditable,
   onChange,
 }: {
   edge: Edge;
+  sourceType: NodeKind | null;
   isEditable: boolean;
   onChange: (label: string) => void;
 }) {
+  const options = edgeLabelOptions(sourceType);
+
   return (
     <div className="config-stack">
       <div>
@@ -403,11 +430,11 @@ function EdgeConfigPanel({
           value={typeof edge.label === "string" ? edge.label : ""}
           onChange={(event) => onChange(event.target.value)}
         >
-          <option value="">none</option>
-          <option value="true">true</option>
-          <option value="false">false</option>
-          <option value="approve">approve</option>
-          <option value="reject">reject</option>
+          {options.map((option) => (
+            <option key={option.value || "none"} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
       </label>
     </div>
@@ -416,18 +443,21 @@ function EdgeConfigPanel({
 
 function defaultNodeData(kind: NodeKind): Record<string, unknown> {
   if (kind === "approval") {
-    return { assigned_role: "manager" };
+    return { label: "Approval", assigned_role: "manager" };
   }
   if (kind === "condition") {
-    return { condition: { field: "input.amount", operator: "greater_than_or_equal", value: 1000 } };
+    return {
+      label: "Condition",
+      condition: { field: "input.amount", operator: "greater_than_or_equal", value: 1000 },
+    };
   }
   if (kind === "delay") {
-    return { seconds: 60 };
+    return { label: "Delay", seconds: 60 };
   }
   if (kind === "end") {
-    return { result: "completed" };
+    return { label: "End", result: "completed" };
   }
-  return {};
+  return { label: "Start" };
 }
 
 function toFlowNode(node: WorkflowNode): Node {
@@ -435,7 +465,7 @@ function toFlowNode(node: WorkflowNode): Node {
     id: node.id,
     type: "default",
     position: { x: node.position.x ?? 0, y: node.position.y ?? 0 },
-    data: { label: `${node.type}: ${node.id}`, workflowType: node.type, workflowData: node.data },
+    data: { label: displayLabel(node.type as NodeKind, node.id, node.data), workflowType: node.type, workflowData: node.data },
   };
 }
 
@@ -471,6 +501,37 @@ function toWorkflowEdge(edge: Edge): WorkflowEdge {
 function workflowType(node: Node): NodeKind {
   const value = node.data?.workflowType;
   return nodeKinds.includes(value as NodeKind) ? (value as NodeKind) : "condition";
+}
+
+function sourceNodeType(nodes: Node[], sourceId: string | null): NodeKind | null {
+  const source = nodes.find((node) => node.id === sourceId);
+  return source ? workflowType(source) : null;
+}
+
+function displayLabel(kind: NodeKind, id: string, data: Record<string, unknown>): string {
+  const label = stringValue(data.label).trim();
+  return label ? `${label} (${kind})` : `${kind}: ${id}`;
+}
+
+function defaultEdgeLabel(kind: NodeKind | null): string | null {
+  const options = edgeLabelOptions(kind);
+  return options[0]?.value || null;
+}
+
+function edgeLabelOptions(kind: NodeKind | null): Array<{ value: string; label: string }> {
+  if (kind === "condition") {
+    return [
+      { value: "true", label: "true" },
+      { value: "false", label: "false" },
+    ];
+  }
+  if (kind === "approval") {
+    return [
+      { value: "approve", label: "approve" },
+      { value: "reject", label: "reject" },
+    ];
+  }
+  return [{ value: "", label: "none" }];
 }
 
 function workflowData(node: Node): Record<string, unknown> {
