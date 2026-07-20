@@ -22,6 +22,7 @@ type Props = {
   onSave: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void;
   isValidatingDraft: boolean;
   onValidateDraft: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void;
+  onDirtyChange: (isDirty: boolean) => void;
   selectedInstance: WorkflowInstance | null;
   instanceEvents: InstanceEvent[];
 };
@@ -46,6 +47,7 @@ export function WorkflowGraphEditor({
   onSave,
   isValidatingDraft,
   onValidateDraft,
+  onDirtyChange,
   selectedInstance,
   instanceEvents,
 }: Props) {
@@ -66,7 +68,15 @@ export function WorkflowGraphEditor({
     setEdges(initialEdges);
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
+    onDirtyChange(false);
   }, [initialEdges, initialNodes]);
+
+  useEffect(() => {
+    onDirtyChange(
+      graphFingerprint(nodes.map(toWorkflowNode), edges.map(toWorkflowEdge)) !==
+        graphFingerprint(workflow.nodes, workflow.edges),
+    );
+  }, [edges, nodes, onDirtyChange, workflow.edges, workflow.nodes]);
 
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectedEdge = edges.find((edge) => edge.id === selectedEdgeId) ?? null;
@@ -576,6 +586,28 @@ function toWorkflowEdge(edge: Edge): WorkflowEdge {
     label: typeof edge.label === "string" ? edge.label : null,
     data: (edge.data as Record<string, unknown> | undefined) ?? {},
   };
+}
+
+function graphFingerprint(nodes: WorkflowNode[], edges: WorkflowEdge[]): string {
+  return JSON.stringify({
+    nodes: nodes
+      .map((node) => ({
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: node.data,
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+    edges: edges
+      .map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        label: edge.label,
+        data: edge.data,
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+  });
 }
 
 function workflowType(node: Node): NodeKind {

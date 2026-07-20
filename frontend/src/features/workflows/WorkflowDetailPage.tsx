@@ -26,6 +26,7 @@ export function WorkflowDetailPage() {
   const queryClient = useQueryClient();
   const [instanceInput, setInstanceInput] = useState("{}");
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
+  const [hasUnsavedGraphChanges, setHasUnsavedGraphChanges] = useState(false);
   const workflowQuery = useQuery({
     queryKey: ["workflow", organizationId, workflowId],
     queryFn: () => getWorkflow(organizationId, workflowId),
@@ -142,7 +143,7 @@ export function WorkflowDetailPage() {
             <button
               className="button button--secondary"
               type="button"
-              disabled={workflow.status === "active" || activateMutation.isPending}
+              disabled={workflow.status === "active" || activateMutation.isPending || hasUnsavedGraphChanges}
               onClick={() => activateMutation.mutate()}
             >
               {activateMutation.isPending ? "Activating..." : "Activate"}
@@ -156,6 +157,10 @@ export function WorkflowDetailPage() {
               {deactivateMutation.isPending ? "Inactivating..." : "Inactivate"}
             </button>
           </div>
+
+          {hasUnsavedGraphChanges ? (
+            <p className="warning-panel">Save the graph before activating or starting an instance.</p>
+          ) : null}
 
           {validateMutation.data ? <ValidationPanel result={validateMutation.data} nodes={workflow.nodes} /> : null}
           {validateDraftMutation.data ? (
@@ -182,7 +187,11 @@ export function WorkflowDetailPage() {
           {saveMutation.isError ? (
             <p className="form-error">{errorMessage(saveMutation.error, "Workflow graph could not be saved.")}</p>
           ) : null}
-          {saveMutation.isSuccess ? <p className="success-panel">Graph saved.</p> : null}
+          {saveMutation.isSuccess ? (
+            <p className="success-panel">
+              <strong>Graph saved.</strong>
+            </p>
+          ) : null}
 
           <WorkflowGraphEditor
             workflow={workflow}
@@ -190,6 +199,7 @@ export function WorkflowDetailPage() {
             onSave={(nodes, edges) => saveMutation.mutate({ nodes, edges })}
             isValidatingDraft={validateDraftMutation.isPending}
             onValidateDraft={(nodes, edges) => validateDraftMutation.mutate({ nodes, edges })}
+            onDirtyChange={setHasUnsavedGraphChanges}
             selectedInstance={selectedInstance}
             instanceEvents={eventsQuery.data ?? []}
           />
@@ -198,6 +208,7 @@ export function WorkflowDetailPage() {
             workflowStatus={workflow.status}
             input={instanceInput}
             onInputChange={setInstanceInput}
+            hasUnsavedGraphChanges={hasUnsavedGraphChanges}
             isStarting={startInstanceMutation.isPending}
             startError={startInstanceMutation.error}
             onStart={() => startInstanceMutation.mutate()}
@@ -226,6 +237,7 @@ function InstanceRunner({
   workflowStatus,
   input,
   onInputChange,
+  hasUnsavedGraphChanges,
   isStarting,
   startError,
   onStart,
@@ -239,6 +251,7 @@ function InstanceRunner({
   workflowStatus: string;
   input: string;
   onInputChange: (value: string) => void;
+  hasUnsavedGraphChanges: boolean;
   isStarting: boolean;
   startError: unknown;
   onStart: () => void;
@@ -250,14 +263,20 @@ function InstanceRunner({
   areEventsLoading: boolean;
 }) {
   const inputError = parseJsonObjectError(input);
-  const canStart = workflowStatus === "active" && !isStarting && !inputError;
+  const canStart = workflowStatus === "active" && !isStarting && !inputError && !hasUnsavedGraphChanges;
 
   return (
     <section className="runner-panel">
       <div className="editor-toolbar">
         <div>
           <strong>Run workflow</strong>
-          <span>{workflowStatus === "active" ? "Start a new instance" : "Activate workflow before running"}</span>
+          <span>
+            {hasUnsavedGraphChanges
+              ? "Save graph changes before starting"
+              : workflowStatus === "active"
+                ? "Start a new instance"
+                : "Activate workflow before running"}
+          </span>
         </div>
         <button className="button" type="button" disabled={!canStart} onClick={onStart}>
           {isStarting ? "Starting..." : "Start instance"}

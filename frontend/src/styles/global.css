@@ -203,6 +203,16 @@ textarea {
   border-radius: 6px;
   background: #fff1f0;
   color: #b42318;
+  font-weight: 700;
+  padding: 10px;
+}
+
+.warning-panel {
+  border: 1px solid #fedf89;
+  border-radius: 6px;
+  background: #fffaeb;
+  color: #93370d;
+  font-weight: 700;
   padding: 10px;
 }
 
@@ -520,12 +530,14 @@ textarea {
   border: 1px solid #a6d8c9;
   background: #f0faf6;
   color: #17604f;
+  font-weight: 700;
 }
 
 .error-panel {
   border: 1px solid #fecdca;
   background: #fff6f5;
   color: #912018;
+  font-weight: 700;
 }
 
 .success-panel ul,
