@@ -4,9 +4,13 @@ version = "0.1.0"
 description = "FastAPI backend for the AI-assisted workflow builder."
 requires-python = ">=3.12"
 dependencies = [
+    "email-validator>=2.2.0",
     "fastapi>=0.115.0",
     "motor>=3.6.0",
+    "bcrypt<5",
+    "passlib[bcrypt]>=1.7.4",
     "pydantic-settings>=2.6.0",
+    "pyjwt>=2.10.0",
     "redis>=5.1.0",
     "uvicorn[standard]>=0.32.0",
 ]
@@ -26,4 +30,3 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-

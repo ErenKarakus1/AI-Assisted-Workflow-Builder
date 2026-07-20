@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     mongodb_database: str = "workflow_builder"
     redis_url: str = "redis://localhost:6379/0"
 
+    jwt_secret_key: str = "change-me-in-production-with-a-long-random-secret"
+    jwt_algorithm: str = "HS256"
+    access_token_minutes: int = 15
+    refresh_token_days: int = 30
+
 
 settings = Settings()
-
