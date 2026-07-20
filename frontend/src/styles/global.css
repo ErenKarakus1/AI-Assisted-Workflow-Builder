@@ -279,6 +279,13 @@ select {
   gap: 4px;
 }
 
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .list-row span {
   color: #667085;
   font-size: 0.92rem;

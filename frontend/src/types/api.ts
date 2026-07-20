@@ -56,3 +56,21 @@ export type WorkflowValidationResult = {
   errors: WorkflowValidationIssue[];
   warnings: WorkflowValidationIssue[];
 };
+
+export type TaskStatus = "pending" | "completed";
+
+export type TaskDecision = "approve" | "reject";
+
+export type Task = {
+  id: string;
+  organization_id: string;
+  workflow_id: string;
+  instance_id: string;
+  node_id: string;
+  status: TaskStatus;
+  assigned_user_id: string | null;
+  assigned_role: string | null;
+  decision: TaskDecision | null;
+  completed_by_user_id: string | null;
+  revision: number;
+};
