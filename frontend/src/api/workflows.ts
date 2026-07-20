@@ -66,6 +66,12 @@ export function deactivateWorkflow(organizationId: string, workflowId: string): 
   });
 }
 
+export function deleteWorkflow(organizationId: string, workflowId: string): Promise<void> {
+  return apiRequest<void>(`/api/orgs/${organizationId}/workflows/${workflowId}`, {
+    method: "DELETE",
+  });
+}
+
 export function updateWorkflow(workflow: Workflow): Promise<Workflow> {
   return apiRequest<Workflow>(`/api/orgs/${workflow.organization_id}/workflows/${workflow.id}`, {
     method: "PUT",

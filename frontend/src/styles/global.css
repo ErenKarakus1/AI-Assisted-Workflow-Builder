@@ -206,6 +206,16 @@ textarea {
   background: #384b63;
 }
 
+.button--danger {
+  background: #b42318;
+}
+
+.button--small {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 0.86rem;
+}
+
 .form-error {
   border-radius: 6px;
   background: #fff1f0;

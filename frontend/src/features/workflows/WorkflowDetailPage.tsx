@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { listInstanceEvents, listWorkflowInstances, startWorkflowInstance } from "../../api/instances";
 import {
   activateWorkflow,
   deactivateWorkflow,
+  deleteWorkflow,
   getWorkflow,
   updateWorkflow,
   validateWorkflow,
@@ -23,6 +24,7 @@ import { WorkflowGraphEditor } from "./WorkflowGraphEditor";
 
 export function WorkflowDetailPage() {
   const { organizationId = "", workflowId = "" } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [instanceInput, setInstanceInput] = useState("{}");
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
@@ -60,6 +62,13 @@ export function WorkflowDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ["workflows", organizationId] });
     },
   });
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteWorkflow(organizationId, workflowId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["workflows", organizationId] });
+      navigate("/workflows");
+    },
+  });
   const validateDraftMutation = useMutation({
     mutationFn: ({ nodes, edges }: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }) => {
       if (!workflowQuery.data) {
@@ -92,6 +101,7 @@ export function WorkflowDetailPage() {
   });
   useAutoResetMutation(activateMutation.isError, activateMutation.reset);
   useAutoResetMutation(deactivateMutation.isError, deactivateMutation.reset);
+  useAutoResetMutation(deleteMutation.isError, deleteMutation.reset);
   useAutoResetMutation(validateDraftMutation.isError, validateDraftMutation.reset);
   useAutoResetMutation(saveMutation.isError || saveMutation.isSuccess, saveMutation.reset);
   useAutoResetMutation(startInstanceMutation.isError, startInstanceMutation.reset);
@@ -173,6 +183,18 @@ export function WorkflowDetailPage() {
             >
               {deactivateMutation.isPending ? "Inactivating..." : "Inactivate"}
             </button>
+            <button
+              className="button button--danger button--small"
+              type="button"
+              disabled={workflow.status === "active" || deleteMutation.isPending}
+              onClick={() => {
+                if (window.confirm(`Delete "${workflow.name}"? This cannot be undone.`)) {
+                  deleteMutation.mutate();
+                }
+              }}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </button>
           </div>
 
           {hasUnsavedGraphChanges ? (
@@ -195,6 +217,9 @@ export function WorkflowDetailPage() {
             <p className="form-error">
               {errorMessage(deactivateMutation.error, "Workflow could not be inactivated.")}
             </p>
+          ) : null}
+          {deleteMutation.isError ? (
+            <p className="form-error">{errorMessage(deleteMutation.error, "Workflow could not be deleted.")}</p>
           ) : null}
           {validateDraftMutation.isError ? (
             <p className="form-error">
