@@ -197,6 +197,14 @@ export function WorkflowDetailPage() {
             </button>
           </div>
 
+          <WorkflowActionGuidance
+            status={workflow.status}
+            hasUnsavedGraphChanges={hasUnsavedGraphChanges}
+            hasValidationErrors={
+              validateMutation.data?.is_valid === false || validateDraftMutation.data?.is_valid === false
+            }
+          />
+
           {hasUnsavedGraphChanges ? (
             <p className="warning-panel">Save the graph before activating or starting an instance.</p>
           ) : null}
@@ -327,6 +335,12 @@ function InstanceRunner({
 
       <div className="runner-grid">
         <div className="config-stack">
+          {workflowStatus !== "active" ? (
+            <p className="help-panel">You can only start instances from an active workflow.</p>
+          ) : null}
+          {hasUnsavedGraphChanges ? (
+            <p className="help-panel">Save your graph changes before starting a new instance.</p>
+          ) : null}
           <label>
             Input JSON
             <textarea
@@ -407,6 +421,29 @@ function InstanceRunner({
   );
 }
 
+function WorkflowActionGuidance({
+  status,
+  hasUnsavedGraphChanges,
+  hasValidationErrors,
+}: {
+  status: string;
+  hasUnsavedGraphChanges: boolean;
+  hasValidationErrors: boolean;
+}) {
+  const messages = workflowActionMessages(status, hasUnsavedGraphChanges, hasValidationErrors);
+  if (!messages.length) {
+    return null;
+  }
+
+  return (
+    <div className="help-panel">
+      {messages.map((message) => (
+        <p key={message}>{message}</p>
+      ))}
+    </div>
+  );
+}
+
 function JsonBlock({ title, value }: { title: string; value: Record<string, unknown> }) {
   return (
     <div className="compact-row">
@@ -475,6 +512,27 @@ function stringValue(value: unknown): string {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
     ? String(value)
     : "";
+}
+
+function workflowActionMessages(
+  status: string,
+  hasUnsavedGraphChanges: boolean,
+  hasValidationErrors: boolean,
+): string[] {
+  const messages: string[] = [];
+  if (status === "draft") {
+    messages.push("Activate this workflow before starting an instance.");
+  }
+  if (status === "active") {
+    messages.push("Inactivate this workflow before editing or deleting it.");
+  }
+  if (hasUnsavedGraphChanges) {
+    messages.push("Save graph changes before activating or starting an instance.");
+  }
+  if (hasValidationErrors) {
+    messages.push("Fix validation errors before activating.");
+  }
+  return messages;
 }
 
 function humanize(value: string): string {

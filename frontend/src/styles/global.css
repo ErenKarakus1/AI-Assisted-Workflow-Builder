@@ -233,6 +233,16 @@ textarea {
   padding: 10px;
 }
 
+.help-panel {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #dce3ed;
+  border-radius: 6px;
+  background: #fbfcfe;
+  color: #526173;
+  padding: 10px;
+}
+
 .field-error {
   color: #b42318;
   font-size: 0.86rem;
