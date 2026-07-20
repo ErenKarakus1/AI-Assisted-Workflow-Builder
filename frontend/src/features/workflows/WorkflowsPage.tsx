@@ -12,9 +12,13 @@ type FormValues = {
   templateId: string;
 };
 
+type WorkflowStatusFilter = "all" | "draft" | "active";
+
 export function WorkflowsPage() {
   const queryClient = useQueryClient();
   const form = useForm<FormValues>({ defaultValues: { templateId: "blank" } });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<WorkflowStatusFilter>("all");
   const organizationsQuery = useQuery({
     queryKey: ["organizations"],
     queryFn: listOrganizations,
@@ -44,6 +48,14 @@ export function WorkflowsPage() {
   const selectedTemplate =
     workflowTemplates.find((template) => template.id === form.watch("templateId")) ?? workflowTemplates[0];
   const canManageWorkflows = selectedOrg ? selectedOrg.role === "owner" || selectedOrg.role === "admin" : false;
+  const filteredWorkflows = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    return (workflowsQuery.data ?? []).filter((workflow) => {
+      const matchesSearch = !normalizedSearch || workflow.name.toLowerCase().includes(normalizedSearch);
+      const matchesStatus = statusFilter === "all" || workflow.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [searchTerm, statusFilter, workflowsQuery.data]);
 
   return (
     <section className="page-stack">
@@ -51,6 +63,7 @@ export function WorkflowsPage() {
         <div>
           <p className="eyebrow">Workflows</p>
           <h2>{selectedOrg ? selectedOrg.name : "Select an organization"}</h2>
+          {selectedOrg ? <p className="muted">Your role: {humanize(selectedOrg.role)}</p> : null}
         </div>
         <select value={organizationId} onChange={(event) => setSelectedOrgId(event.target.value)}>
           {organizationsQuery.data?.map((org) => (
@@ -85,14 +98,31 @@ export function WorkflowsPage() {
           ) : (
             <p className="help-panel">Members can view workflows and run active workflows, but only owners and admins can create or edit them.</p>
           )}
+
+          <div className="filter-bar">
+            <input
+              placeholder="Search workflows"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as WorkflowStatusFilter)}
+            >
+              <option value="all">All statuses</option>
+              <option value="draft">Draft</option>
+              <option value="active">Active</option>
+            </select>
+          </div>
+
           <div className="list-panel">
-            {workflowsQuery.data?.length ? (
-              workflowsQuery.data.map((workflow) => (
+            {filteredWorkflows.length ? (
+              filteredWorkflows.map((workflow) => (
                 <article className="list-row" key={workflow.id}>
                   <div>
                     <strong>{workflow.name}</strong>
                     <span>
-                      {workflow.status} - revision {workflow.revision}
+                      {humanize(workflow.status)} - revision {workflow.revision}
                     </span>
                   </div>
                   <Link className="text-link" to={`/workflows/${workflow.organization_id}/${workflow.id}`}>
@@ -100,6 +130,10 @@ export function WorkflowsPage() {
                   </Link>
                 </article>
               ))
+            ) : workflowsQuery.isLoading ? (
+              <p className="muted">Loading workflows...</p>
+            ) : workflowsQuery.data?.length ? (
+              <p className="muted">No workflows match your filters.</p>
             ) : (
               <p className="muted">No workflows in this organization yet.</p>
             )}
@@ -110,4 +144,10 @@ export function WorkflowsPage() {
       )}
     </section>
   );
+}
+
+function humanize(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

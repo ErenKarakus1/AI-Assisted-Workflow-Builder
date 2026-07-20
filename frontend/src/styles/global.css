@@ -164,6 +164,12 @@ p {
   width: min(100%, 760px);
 }
 
+.filter-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  gap: 12px;
+}
+
 .workspace-layout {
   align-items: start;
   display: grid;
@@ -862,6 +868,7 @@ code {
   .runner-grid,
   .duration-fields,
   .workflow-create-form,
+  .filter-bar,
   .inline-form {
     grid-template-columns: 1fr;
   }
