@@ -1,31 +1,31 @@
-import { useQuery } from "@tanstack/react-query";
+import { Navigate, Route, Routes } from "react-router-dom";
 
-import { getHealth } from "../api/health";
+import { AppLayout } from "../components/layout/AppLayout";
+import { LoginPage } from "../features/auth/LoginPage";
+import { RegisterPage } from "../features/auth/RegisterPage";
+import { AuthProvider } from "../features/auth/AuthProvider";
+import { DashboardPage } from "../features/dashboard/DashboardPage";
+import { OrganizationsPage } from "../features/orgs/OrganizationsPage";
+import { TasksPage } from "../features/tasks/TasksPage";
+import { WorkflowsPage } from "../features/workflows/WorkflowsPage";
+import { ProtectedRoute } from "../routes/ProtectedRoute";
 
 export function App() {
-  const healthQuery = useQuery({
-    queryKey: ["health"],
-    queryFn: getHealth,
-    retry: false,
-  });
-
-  const apiStatus = healthQuery.data?.status ?? (healthQuery.isError ? "offline" : "checking");
-
   return (
-    <main className="app-shell">
-      <section className="intro-panel">
-        <p className="eyebrow">Workflow automation</p>
-        <h1>AI-Assisted Workflow Builder</h1>
-        <p className="lede">
-          A focused platform for visual approval workflows, deterministic execution, and optional
-          AI documentation and review.
-        </p>
-        <div className="status-row">
-          <span className={`status-dot status-dot--${apiStatus}`} />
-          <span>API status: {apiStatus}</span>
-        </div>
-      </section>
-    </main>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="/organizations" element={<OrganizationsPage />} />
+            <Route path="/workflows" element={<WorkflowsPage />} />
+            <Route path="/tasks" element={<TasksPage />} />
+          </Route>
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
   );
 }
-

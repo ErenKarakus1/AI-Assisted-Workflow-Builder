@@ -14,6 +14,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.53.1",
+    "react-router-dom": "^6.28.0",
     "reactflow": "^11.11.4"
   },
   "devDependencies": {
@@ -25,4 +26,3 @@
     "vite": "^5.4.10"
   }
 }
-

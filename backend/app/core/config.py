@@ -8,7 +8,9 @@ class Settings(BaseSettings):
     app_name: str = "AI-Assisted Workflow Builder API"
     app_version: str = "0.1.0"
     environment: str = "development"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    cors_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
+    )
 
     mongodb_url: str = "mongodb://localhost:27017"
     mongodb_database: str = "workflow_builder"
