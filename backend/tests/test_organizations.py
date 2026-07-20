@@ -247,3 +247,85 @@ def test_add_organization_member_rejects_owner_role(client: TestClient) -> None:
     )
 
     assert response.status_code == 403
+
+
+def test_owner_can_remove_organization_member(client: TestClient) -> None:
+    owner_token = register_and_login(client, "owner@example.com")
+    register_and_login(client, "member@example.com")
+    create_response = client.post(
+        "/api/orgs",
+        json={"name": "Team Org"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    add_response = client.post(
+        f"/api/orgs/{create_response.json()['id']}/members",
+        json={"email": "member@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.delete(
+        f"/api/orgs/{create_response.json()['id']}/members/{add_response.json()['id']}",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 204
+
+
+def test_remove_organization_member_rejects_last_owner(client: TestClient) -> None:
+    owner_token = register_and_login(client, "owner@example.com")
+    create_response = client.post(
+        "/api/orgs",
+        json={"name": "Team Org"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    members_response = client.get(
+        f"/api/orgs/{create_response.json()['id']}/members",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.delete(
+        f"/api/orgs/{create_response.json()['id']}/members/{members_response.json()[0]['id']}",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 409
+
+
+def test_owner_can_delete_organization(client: TestClient) -> None:
+    owner_token = register_and_login(client, "owner@example.com")
+    create_response = client.post(
+        "/api/orgs",
+        json={"name": "Delete Me"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.delete(
+        f"/api/orgs/{create_response.json()['id']}",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    list_response = client.get("/api/orgs", headers={"Authorization": f"Bearer {owner_token}"})
+
+    assert response.status_code == 204
+    assert list_response.json() == []
+
+
+def test_admin_cannot_delete_organization(client: TestClient) -> None:
+    owner_token = register_and_login(client, "owner@example.com")
+    admin_token = register_and_login(client, "admin@example.com")
+    create_response = client.post(
+        "/api/orgs",
+        json={"name": "Protected Org"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    client.post(
+        f"/api/orgs/{create_response.json()['id']}/members",
+        json={"email": "admin@example.com", "role": "admin"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.delete(
+        f"/api/orgs/{create_response.json()['id']}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 403

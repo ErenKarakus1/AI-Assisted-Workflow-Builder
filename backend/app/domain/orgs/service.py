@@ -21,6 +21,10 @@ class OrganizationMemberConflictError(Exception):
     pass
 
 
+class OrganizationConflictError(Exception):
+    pass
+
+
 class OrganizationService:
     def __init__(
         self,
@@ -103,6 +107,45 @@ class OrganizationService:
             full_name=target_user.full_name,
             role=member.role,
         )
+
+    async def remove_member(self, organization_id: str, member_id: str, user: User) -> None:
+        actor_membership = await self.members.get_by_user_and_org(user.id, organization_id)
+        if not actor_membership:
+            raise OrganizationAccessDeniedError
+        if actor_membership.role not in {OrganizationRole.OWNER, OrganizationRole.ADMIN}:
+            raise OrganizationAccessDeniedError
+
+        organization = await self.organizations.get_by_id(organization_id)
+        if not organization:
+            raise OrganizationNotFoundError
+
+        target_membership = await self.members.get_by_id(member_id)
+        if not target_membership or target_membership.organization_id != organization_id:
+            raise OrganizationMemberNotFoundError
+
+        if target_membership.role == OrganizationRole.OWNER and actor_membership.role != OrganizationRole.OWNER:
+            raise OrganizationAccessDeniedError
+
+        organization_members = await self.members.list_by_organization(organization_id)
+        owner_count = sum(1 for member in organization_members if member.role == OrganizationRole.OWNER)
+        if target_membership.role == OrganizationRole.OWNER and owner_count <= 1:
+            raise OrganizationConflictError
+
+        await self.members.delete(member_id)
+
+    async def delete(self, organization_id: str, user: User) -> None:
+        membership = await self.members.get_by_user_and_org(user.id, organization_id)
+        if not membership:
+            raise OrganizationAccessDeniedError
+        if membership.role != OrganizationRole.OWNER:
+            raise OrganizationAccessDeniedError
+
+        organization = await self.organizations.get_by_id(organization_id)
+        if not organization:
+            raise OrganizationNotFoundError
+
+        await self.members.delete_by_organization(organization_id)
+        await self.organizations.delete(organization_id)
 
     async def get_for_user(self, organization_id: str, user: User) -> OrganizationRead:
         membership = await self.members.get_by_user_and_org(user.id, organization_id)

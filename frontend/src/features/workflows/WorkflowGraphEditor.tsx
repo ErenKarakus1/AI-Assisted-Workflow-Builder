@@ -33,6 +33,7 @@ type Props = {
   selectedInstance: WorkflowInstance | null;
   instanceEvents: InstanceEvent[];
   organizationMembers: OrganizationMember[];
+  canManageWorkflow: boolean;
 };
 
 type NodeKind = "start" | "approval" | "condition" | "delay" | "end";
@@ -59,8 +60,9 @@ export function WorkflowGraphEditor({
   selectedInstance,
   instanceEvents,
   organizationMembers,
+  canManageWorkflow,
 }: Props) {
-  const isEditable = workflow.status === "draft";
+  const isEditable = canManageWorkflow && workflow.status === "draft";
   const initialNodes = useMemo(() => workflow.nodes.map(toFlowNode), [workflow.nodes]);
   const initialEdges = useMemo(() => workflow.edges.map(toFlowEdge), [workflow.edges]);
   const progress = useMemo(
@@ -212,7 +214,9 @@ export function WorkflowGraphEditor({
               ? `Viewing instance ${selectedInstance.id} progress`
               : isEditable
                 ? "Draft editing enabled"
-                : "Active workflows are read-only"}
+                : canManageWorkflow
+                  ? "Active workflows are read-only"
+                  : "Members can view workflows but cannot edit them"}
           </span>
         </div>
         <div className="editor-actions">

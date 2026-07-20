@@ -12,6 +12,7 @@ from app.domain.auth.repository import UserRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
 from app.domain.orgs.service import (
     OrganizationAccessDeniedError,
+    OrganizationConflictError,
     OrganizationMemberConflictError,
     OrganizationMemberNotFoundError,
     OrganizationNotFoundError,
@@ -63,6 +64,27 @@ async def get_organization(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Organization access denied",
+        ) from exc
+
+
+@router.delete("/{organization_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_organization(
+    organization_id: str,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    organizations: Annotated[OrganizationRepository, Depends(organization_repository_dependency)],
+    members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
+) -> None:
+    try:
+        await OrganizationService(organizations, members).delete(organization_id, current_user)
+    except OrganizationNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        ) from exc
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only organization owners can delete organizations",
         ) from exc
 
 
@@ -122,6 +144,42 @@ async def add_organization_member(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User is already a member of this organization",
+        ) from exc
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization access denied",
+        ) from exc
+
+
+@router.delete("/{organization_id}/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_organization_member(
+    organization_id: str,
+    member_id: str,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    organizations: Annotated[OrganizationRepository, Depends(organization_repository_dependency)],
+    members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
+) -> None:
+    try:
+        await OrganizationService(organizations, members).remove_member(
+            organization_id,
+            member_id,
+            current_user,
+        )
+    except OrganizationNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        ) from exc
+    except OrganizationMemberNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization member not found",
+        ) from exc
+    except OrganizationConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot remove the last organization owner",
         ) from exc
     except OrganizationAccessDeniedError as exc:
         raise HTTPException(

@@ -43,6 +43,7 @@ export function WorkflowsPage() {
   });
   const selectedTemplate =
     workflowTemplates.find((template) => template.id === form.watch("templateId")) ?? workflowTemplates[0];
+  const canManageWorkflows = selectedOrg ? selectedOrg.role === "owner" || selectedOrg.role === "admin" : false;
 
   return (
     <section className="page-stack">
@@ -61,20 +62,29 @@ export function WorkflowsPage() {
       </div>
       {organizationId ? (
         <>
-          <form className="workflow-create-form" onSubmit={form.handleSubmit((values) => createMutation.mutate(values))}>
-            <input placeholder="Workflow name" {...form.register("name", { required: true })} />
-            <select {...form.register("templateId")}>
-              {workflowTemplates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.name}
-                </option>
-              ))}
-            </select>
-            <button className="button" type="submit" disabled={createMutation.isPending}>
-              Create
-            </button>
-          </form>
-          <p className="muted">{selectedTemplate.description}</p>
+          {canManageWorkflows ? (
+            <>
+              <form
+                className="workflow-create-form"
+                onSubmit={form.handleSubmit((values) => createMutation.mutate(values))}
+              >
+                <input placeholder="Workflow name" {...form.register("name", { required: true })} />
+                <select {...form.register("templateId")}>
+                  {workflowTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+                <button className="button" type="submit" disabled={createMutation.isPending}>
+                  Create
+                </button>
+              </form>
+              <p className="muted">{selectedTemplate.description}</p>
+            </>
+          ) : (
+            <p className="help-panel">Members can view workflows and run active workflows, but only owners and admins can create or edit them.</p>
+          )}
           <div className="list-panel">
             {workflowsQuery.data?.length ? (
               workflowsQuery.data.map((workflow) => (

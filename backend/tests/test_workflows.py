@@ -68,6 +68,22 @@ def register_login_create_org(client: TestClient, email: str, org_name: str) -> 
     return token, org_response.json()["id"]
 
 
+def register_and_login(client: TestClient, email: str) -> str:
+    client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": "correct-horse-battery",
+            "full_name": "Workflow User",
+        },
+    )
+    login_response = client.post(
+        "/api/auth/login",
+        json={"email": email, "password": "correct-horse-battery"},
+    )
+    return login_response.json()["access_token"]
+
+
 def workflow_payload(name: str = "Employee Onboarding") -> dict:
     return {
         "name": name,
@@ -463,3 +479,68 @@ def test_validate_draft_uses_unsaved_graph(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()["is_valid"] is False
     assert any(error["code"] == "start_outgoing_count" for error in response.json()["errors"])
+
+
+def test_member_can_view_but_not_create_workflow(client: TestClient) -> None:
+    owner_token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    member_token = register_and_login(client, "member@example.com")
+    client.post(
+        f"/api/orgs/{org_id}/members",
+        json={"email": "member@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=workflow_payload(),
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    list_response = client.get(
+        f"/api/orgs/{org_id}/workflows",
+        headers={"Authorization": f"Bearer {member_token}"},
+    )
+    denied_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=workflow_payload("Member Workflow"),
+        headers={"Authorization": f"Bearer {member_token}"},
+    )
+
+    assert list_response.status_code == 200
+    assert list_response.json()[0]["id"] == create_response.json()["id"]
+    assert denied_response.status_code == 403
+
+
+def test_member_cannot_change_workflow(client: TestClient) -> None:
+    owner_token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    member_token = register_and_login(client, "member@example.com")
+    client.post(
+        f"/api/orgs/{org_id}/members",
+        json={"email": "member@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=workflow_payload(),
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    workflow = create_response.json()
+    update_payload = workflow_payload("Member Edit")
+    update_payload["revision"] = workflow["revision"]
+
+    update_response = client.put(
+        f"/api/orgs/{org_id}/workflows/{workflow['id']}",
+        json=update_payload,
+        headers={"Authorization": f"Bearer {member_token}"},
+    )
+    activate_response = client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow['id']}/activate",
+        headers={"Authorization": f"Bearer {member_token}"},
+    )
+    delete_response = client.delete(
+        f"/api/orgs/{org_id}/workflows/{workflow['id']}",
+        headers={"Authorization": f"Bearer {member_token}"},
+    )
+
+    assert update_response.status_code == 403
+    assert activate_response.status_code == 403
+    assert delete_response.status_code == 403

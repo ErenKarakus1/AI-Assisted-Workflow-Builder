@@ -25,3 +25,15 @@ export function addOrganizationMember(
     body: JSON.stringify(payload),
   });
 }
+
+export function removeOrganizationMember(organizationId: string, memberId: string): Promise<void> {
+  return apiRequest<void>(`/api/orgs/${organizationId}/members/${memberId}`, {
+    method: "DELETE",
+  });
+}
+
+export function deleteOrganization(organizationId: string): Promise<void> {
+  return apiRequest<void>(`/api/orgs/${organizationId}`, {
+    method: "DELETE",
+  });
+}

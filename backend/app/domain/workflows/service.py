@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 from app.domain.orgs.repository import OrganizationMemberRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
+from app.models.organization import OrganizationRole
 from app.domain.workflows.repository import WorkflowRepository
 from app.domain.workflows.validation import WorkflowValidator
 from app.models.user import User
@@ -37,7 +38,7 @@ class WorkflowService:
         payload: WorkflowCreate,
         user: User,
     ) -> WorkflowRead:
-        await self._ensure_membership(organization_id, user)
+        await self._ensure_workflow_manager(organization_id, user)
         workflow = Workflow(
             organization_id=organization_id,
             name=payload.name.strip(),
@@ -63,6 +64,7 @@ class WorkflowService:
         payload: WorkflowUpdate,
         user: User,
     ) -> WorkflowRead:
+        await self._ensure_workflow_manager(organization_id, user)
         workflow = await self._get_for_organization(organization_id, workflow_id, user)
         if workflow.revision != payload.revision:
             raise WorkflowRevisionConflictError
@@ -77,6 +79,7 @@ class WorkflowService:
         return self._read(await self.workflows.update(workflow))
 
     async def delete(self, organization_id: str, workflow_id: str, user: User) -> None:
+        await self._ensure_workflow_manager(organization_id, user)
         workflow = await self._get_for_organization(organization_id, workflow_id, user)
         if workflow.status != WorkflowStatus.DRAFT:
             raise WorkflowRevisionConflictError
@@ -98,6 +101,7 @@ class WorkflowService:
         payload: WorkflowUpdate,
         user: User,
     ) -> WorkflowValidationResult:
+        await self._ensure_workflow_manager(organization_id, user)
         workflow = await self._get_for_organization(organization_id, workflow_id, user)
         if workflow.revision != payload.revision:
             raise WorkflowRevisionConflictError
@@ -112,6 +116,7 @@ class WorkflowService:
         return WorkflowValidator().validate(draft)
 
     async def activate(self, organization_id: str, workflow_id: str, user: User) -> WorkflowRead:
+        await self._ensure_workflow_manager(organization_id, user)
         workflow = await self._get_for_organization(organization_id, workflow_id, user)
         if workflow.status != WorkflowStatus.DRAFT:
             raise WorkflowRevisionConflictError
@@ -126,6 +131,7 @@ class WorkflowService:
         return self._read(await self.workflows.update(workflow))
 
     async def deactivate(self, organization_id: str, workflow_id: str, user: User) -> WorkflowRead:
+        await self._ensure_workflow_manager(organization_id, user)
         workflow = await self._get_for_organization(organization_id, workflow_id, user)
         if workflow.status != WorkflowStatus.ACTIVE:
             raise WorkflowRevisionConflictError
@@ -138,6 +144,11 @@ class WorkflowService:
     async def _ensure_membership(self, organization_id: str, user: User) -> None:
         membership = await self.members.get_by_user_and_org(user.id, organization_id)
         if not membership:
+            raise OrganizationAccessDeniedError
+
+    async def _ensure_workflow_manager(self, organization_id: str, user: User) -> None:
+        membership = await self.members.get_by_user_and_org(user.id, organization_id)
+        if not membership or membership.role not in {OrganizationRole.OWNER, OrganizationRole.ADMIN}:
             raise OrganizationAccessDeniedError
 
     async def _get_for_organization(

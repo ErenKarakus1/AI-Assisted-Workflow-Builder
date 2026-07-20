@@ -14,6 +14,10 @@ class OrganizationRepository(ABC):
     async def get_by_id(self, organization_id: str) -> Organization | None:
         raise NotImplementedError
 
+    @abstractmethod
+    async def delete(self, organization_id: str) -> None:
+        raise NotImplementedError
+
 
 class OrganizationMemberRepository(ABC):
     @abstractmethod
@@ -36,6 +40,18 @@ class OrganizationMemberRepository(ABC):
     async def list_by_organization(self, organization_id: str) -> list[OrganizationMember]:
         raise NotImplementedError
 
+    @abstractmethod
+    async def get_by_id(self, member_id: str) -> OrganizationMember | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete(self, member_id: str) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete_by_organization(self, organization_id: str) -> None:
+        raise NotImplementedError
+
 
 class MongoOrganizationRepository(OrganizationRepository):
     def __init__(self, database: AsyncIOMotorDatabase) -> None:
@@ -48,6 +64,9 @@ class MongoOrganizationRepository(OrganizationRepository):
     async def get_by_id(self, organization_id: str) -> Organization | None:
         document = await self.collection.find_one({"id": organization_id})
         return Organization(**document) if document else None
+
+    async def delete(self, organization_id: str) -> None:
+        await self.collection.delete_one({"id": organization_id})
 
 
 class MongoOrganizationMemberRepository(OrganizationMemberRepository):
@@ -77,3 +96,13 @@ class MongoOrganizationMemberRepository(OrganizationMemberRepository):
         cursor = self.collection.find({"organization_id": organization_id})
         documents = await cursor.to_list(length=None)
         return [OrganizationMember(**document) for document in documents]
+
+    async def get_by_id(self, member_id: str) -> OrganizationMember | None:
+        document = await self.collection.find_one({"id": member_id})
+        return OrganizationMember(**document) if document else None
+
+    async def delete(self, member_id: str) -> None:
+        await self.collection.delete_one({"id": member_id})
+
+    async def delete_by_organization(self, organization_id: str) -> None:
+        await self.collection.delete_many({"organization_id": organization_id})

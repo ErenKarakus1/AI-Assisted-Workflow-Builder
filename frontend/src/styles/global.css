@@ -190,6 +190,10 @@ p {
   overflow: hidden;
 }
 
+.workspace-card--wide {
+  grid-column: 1 / -1;
+}
+
 .workspace-card__header {
   display: flex;
   align-items: center;
@@ -291,11 +295,16 @@ p {
 
 .member-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid #edf1f6;
   padding: 14px 18px;
+}
+
+.member-row .role-pill:last-child {
+  grid-column: 3 / 5;
+  justify-self: end;
 }
 
 .member-row:last-child {
@@ -332,6 +341,10 @@ p {
 
 .workspace-empty-state p {
   color: #667085;
+}
+
+.danger-zone {
+  border-color: #fecdca;
 }
 
 label {

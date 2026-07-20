@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { listInstanceEvents, listWorkflowInstances, startWorkflowInstance } from "../../api/instances";
-import { listOrganizationMembers } from "../../api/organizations";
+import { listOrganizationMembers, listOrganizations } from "../../api/organizations";
 import {
   activateWorkflow,
   deactivateWorkflow,
@@ -45,6 +45,10 @@ export function WorkflowDetailPage() {
     queryKey: ["organization-members", organizationId],
     queryFn: () => listOrganizationMembers(organizationId),
     enabled: Boolean(organizationId),
+  });
+  const organizationsQuery = useQuery({
+    queryKey: ["organizations"],
+    queryFn: listOrganizations,
   });
   const effectiveSelectedInstanceId = selectedInstanceId ?? instancesQuery.data?.[0]?.id ?? null;
   const eventsQuery = useQuery({
@@ -126,6 +130,9 @@ export function WorkflowDetailPage() {
   }, [resetValidate, resetValidateDraft]);
 
   const workflow = workflowQuery.data;
+  const selectedOrganization = organizationsQuery.data?.find((organization) => organization.id === organizationId);
+  const canManageWorkflow =
+    selectedOrganization?.role === "owner" || selectedOrganization?.role === "admin";
   const selectedInstance =
     instancesQuery.data?.find((instance) => instance.id === effectiveSelectedInstanceId) ??
     startInstanceMutation.data ??
@@ -165,44 +172,48 @@ export function WorkflowDetailPage() {
             </article>
           </div>
 
-          <div className="action-row">
-            <button
-              className="button"
-              type="button"
-              disabled={validateMutation.isPending}
-              onClick={() => validateMutation.mutate()}
-            >
-              {validateMutation.isPending ? "Validating..." : "Validate"}
-            </button>
-            <button
-              className="button button--secondary"
-              type="button"
-              disabled={workflow.status === "active" || activateMutation.isPending || hasUnsavedGraphChanges}
-              onClick={() => activateMutation.mutate()}
-            >
-              {activateMutation.isPending ? "Activating..." : "Activate"}
-            </button>
-            <button
-              className="button button--ghost"
-              type="button"
-              disabled={workflow.status !== "active" || deactivateMutation.isPending}
-              onClick={() => deactivateMutation.mutate()}
-            >
-              {deactivateMutation.isPending ? "Inactivating..." : "Inactivate"}
-            </button>
-            <button
-              className="button button--danger button--small"
-              type="button"
-              disabled={workflow.status === "active" || deleteMutation.isPending}
-              onClick={() => {
-                if (window.confirm(`Delete "${workflow.name}"? This cannot be undone.`)) {
-                  deleteMutation.mutate();
-                }
-              }}
-            >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
-            </button>
-          </div>
+          {canManageWorkflow ? (
+            <div className="action-row">
+              <button
+                className="button"
+                type="button"
+                disabled={validateMutation.isPending}
+                onClick={() => validateMutation.mutate()}
+              >
+                {validateMutation.isPending ? "Validating..." : "Validate"}
+              </button>
+              <button
+                className="button button--secondary"
+                type="button"
+                disabled={workflow.status === "active" || activateMutation.isPending || hasUnsavedGraphChanges}
+                onClick={() => activateMutation.mutate()}
+              >
+                {activateMutation.isPending ? "Activating..." : "Activate"}
+              </button>
+              <button
+                className="button button--ghost"
+                type="button"
+                disabled={workflow.status !== "active" || deactivateMutation.isPending}
+                onClick={() => deactivateMutation.mutate()}
+              >
+                {deactivateMutation.isPending ? "Inactivating..." : "Inactivate"}
+              </button>
+              <button
+                className="button button--danger button--small"
+                type="button"
+                disabled={workflow.status === "active" || deleteMutation.isPending}
+                onClick={() => {
+                  if (window.confirm(`Delete "${workflow.name}"? This cannot be undone.`)) {
+                    deleteMutation.mutate();
+                  }
+                }}
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          ) : (
+            <p className="help-panel">Members can view this workflow and start active instances, but only owners and admins can change the graph or workflow status.</p>
+          )}
 
           <WorkflowActionGuidance
             status={workflow.status}
@@ -210,6 +221,7 @@ export function WorkflowDetailPage() {
             hasValidationErrors={
               validateMutation.data?.is_valid === false || validateDraftMutation.data?.is_valid === false
             }
+            canManageWorkflow={canManageWorkflow}
           />
 
           {hasUnsavedGraphChanges ? (
@@ -260,6 +272,7 @@ export function WorkflowDetailPage() {
             selectedInstance={selectedInstance}
             instanceEvents={eventsQuery.data ?? []}
             organizationMembers={organizationMembersQuery.data ?? []}
+            canManageWorkflow={canManageWorkflow}
           />
 
           <InstanceRunner
@@ -461,11 +474,17 @@ function WorkflowActionGuidance({
   status,
   hasUnsavedGraphChanges,
   hasValidationErrors,
+  canManageWorkflow,
 }: {
   status: string;
   hasUnsavedGraphChanges: boolean;
   hasValidationErrors: boolean;
+  canManageWorkflow: boolean;
 }) {
+  if (!canManageWorkflow) {
+    return null;
+  }
+
   const messages = workflowActionMessages(status, hasUnsavedGraphChanges, hasValidationErrors);
   if (!messages.length) {
     return null;

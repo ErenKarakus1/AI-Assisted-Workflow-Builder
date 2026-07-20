@@ -5,8 +5,10 @@ import { useMemo, useState } from "react";
 import {
   addOrganizationMember,
   createOrganization,
+  deleteOrganization,
   listOrganizationMembers,
   listOrganizations,
+  removeOrganizationMember,
 } from "../../api/organizations";
 import { errorMessage } from "../../lib/errors";
 
@@ -53,6 +55,19 @@ export function OrganizationsPage() {
       await queryClient.invalidateQueries({ queryKey: ["organization-members", organizationId] });
     },
   });
+  const removeMemberMutation = useMutation({
+    mutationFn: (memberId: string) => removeOrganizationMember(organizationId, memberId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["organization-members", organizationId] });
+    },
+  });
+  const deleteOrganizationMutation = useMutation({
+    mutationFn: () => deleteOrganization(organizationId),
+    onSuccess: async () => {
+      setSelectedOrgId("");
+      await queryClient.invalidateQueries({ queryKey: ["organizations"] });
+    },
+  });
 
   return (
     <section className="page-stack">
@@ -65,6 +80,14 @@ export function OrganizationsPage() {
 
       {createMutation.isError ? (
         <p className="form-error">{errorMessage(createMutation.error, "Organization could not be created.")}</p>
+      ) : null}
+      {removeMemberMutation.isError ? (
+        <p className="form-error">{errorMessage(removeMemberMutation.error, "Member could not be removed.")}</p>
+      ) : null}
+      {deleteOrganizationMutation.isError ? (
+        <p className="form-error">
+          {errorMessage(deleteOrganizationMutation.error, "Organization could not be deleted.")}
+        </p>
       ) : null}
 
       <div className="workspace-layout">
@@ -135,7 +158,7 @@ export function OrganizationsPage() {
               </article>
 
               <div className="workspace-detail-grid">
-                <article className="workspace-card">
+                <article className={canManageMembers(selectedOrg.role) ? "workspace-card" : "workspace-card workspace-card--wide"}>
                   <div className="workspace-card__header">
                     <div>
                       <p className="eyebrow">Team</p>
@@ -155,6 +178,22 @@ export function OrganizationsPage() {
                             <span>{member.email}</span>
                           </div>
                           <span className="role-pill">{humanize(member.role)}</span>
+                          {canRemoveMember(selectedOrg.role, member.role) ? (
+                            <button
+                              className="button button--danger button--small"
+                              type="button"
+                              disabled={removeMemberMutation.isPending}
+                              onClick={() => {
+                                if (
+                                  window.confirm(`Remove ${member.full_name || member.email} from ${selectedOrg.name}?`)
+                                ) {
+                                  removeMemberMutation.mutate(member.id);
+                                }
+                              }}
+                            >
+                              Remove
+                            </button>
+                          ) : null}
                         </div>
                       ))
                     ) : (
@@ -163,50 +202,73 @@ export function OrganizationsPage() {
                   </div>
                 </article>
 
-                <article className="workspace-card">
-                  <div className="workspace-card__header">
-                    <div>
-                      <p className="eyebrow">Invite</p>
-                      <h3>Add member</h3>
+                {canManageMembers(selectedOrg.role) ? (
+                  <article className="workspace-card">
+                    <div className="workspace-card__header">
+                      <div>
+                        <p className="eyebrow">Invite</p>
+                        <h3>Add member</h3>
+                      </div>
                     </div>
-                  </div>
-                  <form
-                    className="member-form"
-                    onSubmit={memberForm.handleSubmit((values) => addMemberMutation.mutate(values))}
-                  >
-                    <label>
-                      Registered user email
-                      <input
-                        placeholder="teammate@example.com"
-                        type="email"
-                        {...memberForm.register("email", { required: true })}
-                      />
-                    </label>
-                    <label>
-                      Role
-                      <select {...memberForm.register("role", { required: true })}>
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </label>
-                    <button
-                      className="button"
-                      type="submit"
-                      disabled={addMemberMutation.isPending || selectedOrg.role === "member"}
+                    <form
+                      className="member-form"
+                      onSubmit={memberForm.handleSubmit((values) => addMemberMutation.mutate(values))}
                     >
-                      {addMemberMutation.isPending ? "Adding..." : "Add member"}
-                    </button>
-                    {selectedOrg.role === "member" ? (
-                      <p className="field-hint">Only organization owners and admins can add members.</p>
+                      <label>
+                        Registered user email
+                        <input
+                          placeholder="teammate@example.com"
+                          type="email"
+                          {...memberForm.register("email", { required: true })}
+                        />
+                      </label>
+                      <label>
+                        Role
+                        <select {...memberForm.register("role", { required: true })}>
+                          <option value="member">Member</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </label>
+                      <button className="button" type="submit" disabled={addMemberMutation.isPending}>
+                        {addMemberMutation.isPending ? "Adding..." : "Add member"}
+                      </button>
+                      <p className="field-hint">The user must register before you can add them.</p>
+                    </form>
+                    {addMemberMutation.isError ? (
+                      <p className="form-error">
+                        {errorMessage(addMemberMutation.error, "Member could not be added.")}
+                      </p>
                     ) : null}
-                    <p className="field-hint">The user must register before you can add them.</p>
-                  </form>
-                  {addMemberMutation.isError ? (
-                    <p className="form-error">
-                      {errorMessage(addMemberMutation.error, "Member could not be added.")}
-                    </p>
-                  ) : null}
-                </article>
+                  </article>
+                ) : null}
+
+                {selectedOrg.role === "owner" ? (
+                  <article className="workspace-card danger-zone">
+                    <div className="workspace-card__header">
+                      <div>
+                        <p className="eyebrow">Danger zone</p>
+                        <h3>Delete organization</h3>
+                      </div>
+                    </div>
+                    <div className="member-form">
+                      <p className="field-hint">
+                        Deleting an organization removes the workspace and its member list.
+                      </p>
+                      <button
+                        className="button button--danger"
+                        type="button"
+                        disabled={deleteOrganizationMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm(`Delete "${selectedOrg.name}"? This cannot be undone.`)) {
+                            deleteOrganizationMutation.mutate();
+                          }
+                        }}
+                      >
+                        {deleteOrganizationMutation.isPending ? "Deleting..." : "Delete organization"}
+                      </button>
+                    </div>
+                  </article>
+                ) : null}
               </div>
             </>
           ) : organizationsQuery.data?.length ? (
@@ -230,4 +292,18 @@ function humanize(value: string): string {
   return value
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function canRemoveMember(actorRole: string, memberRole: string): boolean {
+  if (memberRole === "owner") {
+    return false;
+  }
+  if (actorRole === "owner") {
+    return true;
+  }
+  return actorRole === "admin" && memberRole === "member";
+}
+
+function canManageMembers(role: string): boolean {
+  return role === "owner" || role === "admin";
 }

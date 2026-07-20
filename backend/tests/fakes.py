@@ -40,6 +40,9 @@ class InMemoryOrganizationRepository(OrganizationRepository):
     async def get_by_id(self, organization_id: str) -> Organization | None:
         return self.organizations_by_id.get(organization_id)
 
+    async def delete(self, organization_id: str) -> None:
+        self.organizations_by_id.pop(organization_id, None)
+
 
 class InMemoryOrganizationMemberRepository(OrganizationMemberRepository):
     def __init__(self) -> None:
@@ -68,6 +71,17 @@ class InMemoryOrganizationMemberRepository(OrganizationMemberRepository):
             for member in self.members_by_id.values()
             if member.organization_id == organization_id
         ]
+
+    async def get_by_id(self, member_id: str) -> OrganizationMember | None:
+        return self.members_by_id.get(member_id)
+
+    async def delete(self, member_id: str) -> None:
+        self.members_by_id.pop(member_id, None)
+
+    async def delete_by_organization(self, organization_id: str) -> None:
+        for member_id, member in list(self.members_by_id.items()):
+            if member.organization_id == organization_id:
+                self.members_by_id.pop(member_id)
 
 
 class InMemoryWorkflowRepository(WorkflowRepository):
