@@ -187,6 +187,22 @@ def test_condition_workflow_takes_true_branch(client: TestClient) -> None:
     assert response.json()["context"]["result"] == "high"
 
 
+def test_condition_missing_input_takes_false_branch(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    workflow_id = create_and_activate_workflow(client, token, org_id, condition_workflow_payload())
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}/instances",
+        json={"input": {}},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "completed"
+    assert response.json()["context"]["condition_condition-1"] is False
+    assert response.json()["context"]["result"] == "low"
+
+
 def test_instance_events_are_append_only_timeline(client: TestClient) -> None:
     token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
     workflow_id = create_and_activate_workflow(client, token, org_id, condition_workflow_payload())

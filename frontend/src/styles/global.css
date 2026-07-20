@@ -67,9 +67,12 @@ p {
 }
 
 .sidebar {
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  height: 100vh;
   border-right: 1px solid #dce3ed;
   background: #ffffff;
   padding: 24px;
@@ -209,6 +212,12 @@ textarea {
   font-weight: 600;
 }
 
+.field-hint {
+  color: #667085;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
 .muted {
   color: #667085;
 }
@@ -338,10 +347,16 @@ textarea {
 }
 
 .runner-grid {
+  align-items: start;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
   gap: 16px;
   padding: 16px;
+}
+
+.runner-grid > .list-panel {
+  max-height: 320px;
+  overflow: auto;
 }
 
 .editor-toolbar {
@@ -530,6 +545,8 @@ code {
   }
 
   .sidebar {
+    position: static;
+    height: auto;
     gap: 18px;
     border-right: 0;
     border-bottom: 1px solid #dce3ed;

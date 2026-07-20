@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
+from app.domain.scheduling.repository import ScheduledJobRepository
 from app.domain.tasks.repository import TaskRepository
 from app.domain.workflows.repository import WorkflowRepository
 from app.engine.runner import WorkflowEngine
@@ -32,12 +33,14 @@ class TaskService:
         instances: WorkflowInstanceRepository,
         events: InstanceEventRepository,
         members: OrganizationMemberRepository,
+        jobs: ScheduledJobRepository,
     ) -> None:
         self.tasks = tasks
         self.workflows = workflows
         self.instances = instances
         self.events = events
         self.members = members
+        self.jobs = jobs
 
     async def list_for_org(self, organization_id: str, user: User) -> list[TaskRead]:
         await self._ensure_membership(organization_id, user)
@@ -91,12 +94,15 @@ class TaskService:
             )
         )
 
-        emitted_events = await WorkflowEngine().resume_from_decision(
+        created_jobs = []
+        emitted_events = await WorkflowEngine(created_jobs=created_jobs).resume_from_decision(
             workflow,
             instance,
             task.node_id,
             decision.value,
         )
+        for job in created_jobs:
+            await self.jobs.create(job)
         for event in emitted_events:
             await self.events.append(event)
         await self.instances.update(instance)

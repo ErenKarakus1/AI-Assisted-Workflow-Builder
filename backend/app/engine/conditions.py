@@ -28,20 +28,23 @@ def evaluate_condition(expression: dict, data: dict) -> bool:
 
     actual = read_path(data, field)
 
-    if operator == "equals":
-        return actual == expected
-    if operator == "not_equals":
-        return actual != expected
-    if operator == "greater_than":
-        return actual > expected
-    if operator == "greater_than_or_equal":
-        return actual >= expected
-    if operator == "less_than":
-        return actual < expected
-    if operator == "less_than_or_equal":
-        return actual <= expected
-    if operator == "contains":
-        return expected in actual
+    try:
+        if operator == "equals":
+            return actual == expected
+        if operator == "not_equals":
+            return actual != expected
+        if operator == "greater_than":
+            return actual > expected
+        if operator == "greater_than_or_equal":
+            return actual >= expected
+        if operator == "less_than":
+            return actual < expected
+        if operator == "less_than_or_equal":
+            return actual <= expected
+        if operator == "contains":
+            return expected in actual
+    except TypeError:
+        return False
 
     raise ConditionEvaluationError("Unsupported condition operator")
 
@@ -53,4 +56,3 @@ def read_path(data: dict, path: str) -> Any:
             return None
         current = current[part]
     return current
-

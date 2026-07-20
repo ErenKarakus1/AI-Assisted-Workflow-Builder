@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -11,14 +12,40 @@ from app.api.routes.organizations import router as organizations_router
 from app.api.routes.tasks import router as tasks_router
 from app.api.routes.workflows import router as workflows_router
 from app.core.config import settings
-from app.db.mongo import close_database, ensure_indexes
+from app.db.mongo import close_database, ensure_indexes, get_database
+from app.domain.instances.repository import MongoInstanceEventRepository, MongoWorkflowInstanceRepository
+from app.domain.scheduling.repository import MongoScheduledJobRepository
+from app.domain.scheduling.service import SchedulerService
+from app.domain.workflows.repository import MongoWorkflowRepository
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await ensure_indexes()
-    yield
+    scheduler_task = asyncio.create_task(run_scheduler_loop())
+    try:
+        yield
+    finally:
+        scheduler_task.cancel()
+        try:
+            await scheduler_task
+        except asyncio.CancelledError:
+            pass
     await close_database()
+
+
+async def run_scheduler_loop() -> None:
+    database = get_database()
+    service = SchedulerService(
+        jobs=MongoScheduledJobRepository(database),
+        workflows=MongoWorkflowRepository(database),
+        instances=MongoWorkflowInstanceRepository(database),
+        events=MongoInstanceEventRepository(database),
+    )
+
+    while True:
+        await service.process_due_jobs()
+        await asyncio.sleep(1)
 
 
 def create_app() -> FastAPI:

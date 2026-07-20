@@ -346,14 +346,16 @@ function NodeConfigPanel({
             Check this field
             <input
               disabled={!isEditable}
-              value={stringValue((data.condition as Record<string, unknown> | undefined)?.field)}
+              placeholder="amount"
+              value={conditionFieldValue(data)}
               onChange={(event) =>
                 onChange({
                   ...data,
-                  condition: { ...conditionData(data), field: event.target.value },
+                  condition: { ...conditionData(data), field: normalizeConditionField(event.target.value) },
                 })
               }
             />
+            <span className="field-hint">Use a field from the run input. Example: amount saves as input.amount.</span>
           </label>
           <label>
             Comparison
@@ -378,6 +380,7 @@ function NodeConfigPanel({
             Compare against
             <input
               disabled={!isEditable}
+              placeholder="1000"
               value={stringValue(conditionData(data).value)}
               onChange={(event) =>
                 onChange({
@@ -386,6 +389,7 @@ function NodeConfigPanel({
                 })
               }
             />
+            <span className="field-hint">Numbers, true, and false are converted automatically.</span>
           </label>
         </>
       ) : null}
@@ -616,6 +620,19 @@ function workflowData(node: Node): Record<string, unknown> {
 
 function conditionData(data: Record<string, unknown>): Record<string, unknown> {
   return (data.condition as Record<string, unknown> | undefined) ?? {};
+}
+
+function conditionFieldValue(data: Record<string, unknown>): string {
+  const field = stringValue(conditionData(data).field);
+  return field.startsWith("input.") ? field.slice("input.".length) : field;
+}
+
+function normalizeConditionField(field: string): string {
+  const trimmed = field.trim();
+  if (!trimmed || trimmed.startsWith("input.") || trimmed.startsWith("context.")) {
+    return trimmed;
+  }
+  return `input.${trimmed}`;
 }
 
 function stringValue(value: unknown): string {

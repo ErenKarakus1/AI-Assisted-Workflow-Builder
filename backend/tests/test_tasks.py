@@ -5,6 +5,7 @@ from app.api.dependencies import (
     instance_event_repository_dependency,
     organization_member_repository_dependency,
     organization_repository_dependency,
+    scheduled_job_repository_dependency,
     task_repository_dependency,
     user_repository_dependency,
     workflow_instance_repository_dependency,
@@ -13,6 +14,7 @@ from app.api.dependencies import (
 from app.domain.auth.repository import UserRepository
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
+from app.domain.scheduling.repository import ScheduledJobRepository
 from app.domain.tasks.repository import TaskRepository
 from app.domain.workflows.repository import WorkflowRepository
 from app.main import create_app
@@ -20,6 +22,7 @@ from tests.fakes import (
     InMemoryInstanceEventRepository,
     InMemoryOrganizationMemberRepository,
     InMemoryOrganizationRepository,
+    InMemoryScheduledJobRepository,
     InMemoryTaskRepository,
     InMemoryUserRepository,
     InMemoryWorkflowInstanceRepository,
@@ -37,6 +40,7 @@ def client() -> TestClient:
     instance_repository = InMemoryWorkflowInstanceRepository()
     event_repository = InMemoryInstanceEventRepository()
     task_repository = InMemoryTaskRepository()
+    job_repository = InMemoryScheduledJobRepository()
 
     async def override_user_repository() -> UserRepository:
         return user_repository
@@ -59,6 +63,9 @@ def client() -> TestClient:
     async def override_task_repository() -> TaskRepository:
         return task_repository
 
+    async def override_job_repository() -> ScheduledJobRepository:
+        return job_repository
+
     app.dependency_overrides[user_repository_dependency] = override_user_repository
     app.dependency_overrides[organization_repository_dependency] = override_organization_repository
     app.dependency_overrides[organization_member_repository_dependency] = override_member_repository
@@ -66,6 +73,8 @@ def client() -> TestClient:
     app.dependency_overrides[workflow_instance_repository_dependency] = override_instance_repository
     app.dependency_overrides[instance_event_repository_dependency] = override_event_repository
     app.dependency_overrides[task_repository_dependency] = override_task_repository
+    app.dependency_overrides[scheduled_job_repository_dependency] = override_job_repository
+    app.state.job_repository = job_repository
     return TestClient(app)
 
 
@@ -107,6 +116,30 @@ def approval_workflow_payload(assigned_user_id: str | None = None) -> dict:
             {"id": "edge-1", "source": "start-1", "target": "approval-1", "label": None, "data": {}},
             {"id": "edge-2", "source": "approval-1", "target": "approved-end", "label": "approve", "data": {}},
             {"id": "edge-3", "source": "approval-1", "target": "rejected-end", "label": "reject", "data": {}},
+        ],
+    }
+
+
+def approval_then_delay_workflow_payload(assigned_user_id: str) -> dict:
+    return {
+        "name": "Approval Delay Flow",
+        "nodes": [
+            {"id": "start-1", "type": "start", "position": {}, "data": {}},
+            {
+                "id": "approval-1",
+                "type": "approval",
+                "position": {},
+                "data": {"assigned_user_id": assigned_user_id},
+            },
+            {"id": "delay-1", "type": "delay", "position": {}, "data": {"seconds": 5}},
+            {"id": "rejected-end", "type": "end", "position": {}, "data": {"result": "rejected"}},
+            {"id": "done-end", "type": "end", "position": {}, "data": {"result": "done"}},
+        ],
+        "edges": [
+            {"id": "edge-1", "source": "start-1", "target": "approval-1", "label": None, "data": {}},
+            {"id": "edge-2", "source": "approval-1", "target": "delay-1", "label": "approve", "data": {}},
+            {"id": "edge-3", "source": "approval-1", "target": "rejected-end", "label": "reject", "data": {}},
+            {"id": "edge-4", "source": "delay-1", "target": "done-end", "label": None, "data": {}},
         ],
     }
 
@@ -161,6 +194,21 @@ def test_approve_task_resumes_instance_to_approved_end(client: TestClient) -> No
     assert response.json()["decision"] == "approve"
     assert instance_response.json()["status"] == "completed"
     assert instance_response.json()["context"]["result"] == "approved"
+
+
+def test_approve_task_persists_delay_job_when_next_node_is_delay(client: TestClient) -> None:
+    token, org_id, user_id = register_login_create_org(client, "owner@example.com")
+    create_activate_start(client, token, org_id, approval_then_delay_workflow_payload(user_id))
+    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {token}"}).json()[0]
+
+    response = client.post(
+        f"/api/orgs/{org_id}/tasks/{task['id']}/approve",
+        json={"revision": task["revision"]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert len(client.app.state.job_repository.jobs_by_id) == 1
 
 
 def test_reject_task_resumes_instance_to_rejected_end(client: TestClient) -> None:

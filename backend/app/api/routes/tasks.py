@@ -6,6 +6,7 @@ from app.api.dependencies import (
     current_user_dependency,
     instance_event_repository_dependency,
     organization_member_repository_dependency,
+    scheduled_job_repository_dependency,
     task_repository_dependency,
     workflow_instance_repository_dependency,
     workflow_repository_dependency,
@@ -13,6 +14,7 @@ from app.api.dependencies import (
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
+from app.domain.scheduling.repository import ScheduledJobRepository
 from app.domain.tasks.repository import TaskRepository
 from app.domain.tasks.service import TaskConflictError, TaskNotFoundError, TaskService, TaskUnauthorizedError
 from app.domain.workflows.repository import WorkflowRepository
@@ -28,8 +30,9 @@ def task_service(
     instances: Annotated[WorkflowInstanceRepository, Depends(workflow_instance_repository_dependency)],
     events: Annotated[InstanceEventRepository, Depends(instance_event_repository_dependency)],
     members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
+    jobs: Annotated[ScheduledJobRepository, Depends(scheduled_job_repository_dependency)],
 ) -> TaskService:
-    return TaskService(tasks, workflows, instances, events, members)
+    return TaskService(tasks, workflows, instances, events, members, jobs)
 
 
 @router.get("", response_model=list[TaskRead])
