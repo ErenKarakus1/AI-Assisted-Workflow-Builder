@@ -277,6 +277,7 @@ export function WorkflowDetailPage() {
 
           <InstanceRunner
             workflowStatus={workflow.status}
+            canManageWorkflow={canManageWorkflow}
             input={instanceInput}
             onInputChange={setInstanceInput}
             hasUnsavedGraphChanges={hasUnsavedGraphChanges}
@@ -308,6 +309,7 @@ export function WorkflowDetailPage() {
 
 function InstanceRunner({
   workflowStatus,
+  canManageWorkflow,
   input,
   onInputChange,
   hasUnsavedGraphChanges,
@@ -324,6 +326,7 @@ function InstanceRunner({
   areEventsLoading,
 }: {
   workflowStatus: string;
+  canManageWorkflow: boolean;
   input: string;
   onInputChange: (value: string) => void;
   hasUnsavedGraphChanges: boolean;
@@ -354,7 +357,9 @@ function InstanceRunner({
             {hasUnsavedGraphChanges
               ? "Save graph changes before starting"
               : workflowStatus === "active"
-                ? "Start a new instance"
+                ? canManageWorkflow
+                  ? "Start a new instance"
+                  : "Members can start active workflows"
                 : "Activate workflow before running"}
           </span>
         </div>
@@ -367,6 +372,9 @@ function InstanceRunner({
         <div className="config-stack">
           {workflowStatus !== "active" ? (
             <p className="help-panel">You can only start instances from an active workflow.</p>
+          ) : null}
+          {workflowStatus === "active" && !canManageWorkflow ? (
+            <p className="help-panel">You can run this workflow, but only owners and admins can edit it.</p>
           ) : null}
           {hasUnsavedGraphChanges ? (
             <p className="help-panel">Save your graph changes before starting a new instance.</p>

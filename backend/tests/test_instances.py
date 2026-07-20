@@ -99,6 +99,22 @@ def register_login_create_org(client: TestClient, email: str, org_name: str) -> 
     return token, org_response.json()["id"]
 
 
+def register_and_login(client: TestClient, email: str) -> str:
+    client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": "correct-horse-battery",
+            "full_name": "Workflow User",
+        },
+    )
+    login_response = client.post(
+        "/api/auth/login",
+        json={"email": email, "password": "correct-horse-battery"},
+    )
+    return login_response.json()["access_token"]
+
+
 def simple_workflow_payload() -> dict:
     return {
         "name": "Simple Flow",
@@ -169,6 +185,26 @@ def test_start_simple_workflow_instance_completes(client: TestClient) -> None:
     assert response.json()["status"] == "completed"
     assert response.json()["context"]["result"] == "approved"
     assert response.json()["input"] == {"amount": 250}
+
+
+def test_member_can_start_active_workflow_instance(client: TestClient) -> None:
+    owner_token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    member_token = register_and_login(client, "member@example.com")
+    workflow_id = create_and_activate_workflow(client, owner_token, org_id, simple_workflow_payload())
+    client.post(
+        f"/api/orgs/{org_id}/members",
+        json={"email": "member@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow_id}/instances",
+        json={"input": {"amount": 250}},
+        headers={"Authorization": f"Bearer {member_token}"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "completed"
 
 
 def test_condition_workflow_takes_true_branch(client: TestClient) -> None:
