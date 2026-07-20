@@ -2,11 +2,11 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { listOrganizations } from "../../api/organizations";
+import { listOrganizationMembers, listOrganizations } from "../../api/organizations";
 import { approveTask, listTasks, rejectTask } from "../../api/tasks";
 import { listWorkflows } from "../../api/workflows";
 import { errorMessage } from "../../lib/errors";
-import type { Task, Workflow } from "../../types/api";
+import type { OrganizationMember, Task, Workflow } from "../../types/api";
 
 export function TasksPage() {
   const queryClient = useQueryClient();
@@ -29,6 +29,11 @@ export function TasksPage() {
   const workflowsQuery = useQuery({
     queryKey: ["workflows", organizationId],
     queryFn: () => listWorkflows(organizationId),
+    enabled: Boolean(organizationId),
+  });
+  const membersQuery = useQuery({
+    queryKey: ["organization-members", organizationId],
+    queryFn: () => listOrganizationMembers(organizationId),
     enabled: Boolean(organizationId),
   });
 
@@ -90,6 +95,7 @@ export function TasksPage() {
             emptyText={tasksQuery.isLoading ? "Loading tasks..." : "No pending approval tasks."}
             tasks={pendingTasks}
             workflowsById={workflowsById}
+            members={membersQuery.data ?? []}
             activeTaskId={activeTaskId}
             isDeciding={approveMutation.isPending || rejectMutation.isPending}
             showActions
@@ -101,6 +107,7 @@ export function TasksPage() {
             emptyText="No completed approval tasks yet."
             tasks={completedTasks}
             workflowsById={workflowsById}
+            members={membersQuery.data ?? []}
             activeTaskId={activeTaskId}
             isDeciding={false}
             showActions={false}
@@ -120,6 +127,7 @@ function TaskList({
   emptyText,
   tasks,
   workflowsById,
+  members,
   activeTaskId,
   isDeciding,
   showActions,
@@ -130,6 +138,7 @@ function TaskList({
   emptyText: string;
   tasks: Task[];
   workflowsById: Map<string, Workflow>;
+  members: OrganizationMember[];
   activeTaskId: string | null;
   isDeciding: boolean;
   showActions: boolean;
@@ -148,7 +157,7 @@ function TaskList({
               <span>
                 Instance {shortId(task.instance_id)} - task revision {task.revision}
               </span>
-              <span>{assignmentLabel(task)}</span>
+              <span>{assignmentLabel(task, members)}</span>
               {task.decision ? <span>Decision: {task.decision}</span> : null}
             </div>
             <div className="row-actions">
@@ -196,14 +205,25 @@ function workflowName(task: Task, workflowsById: Map<string, Workflow>): string 
   return workflowsById.get(task.workflow_id)?.name ?? "Workflow approval";
 }
 
-function assignmentLabel(task: Task): string {
+function assignmentLabel(task: Task, members: OrganizationMember[]): string {
   if (task.assigned_user_id) {
-    return `Assigned to user ${shortId(task.assigned_user_id)}`;
+    const assignedMember = members.find((member) => member.user_id === task.assigned_user_id);
+    return `Assigned to ${assignedMember ? memberLabel(assignedMember) : `user ${shortId(task.assigned_user_id)}`}`;
   }
   if (task.assigned_role) {
-    return `Assigned to ${task.assigned_role}`;
+    return `Assigned to ${humanize(task.assigned_role)} role`;
   }
   return "Unassigned";
+}
+
+function memberLabel(member: OrganizationMember): string {
+  return member.full_name ? `${member.full_name} (${member.email})` : member.email;
+}
+
+function humanize(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function shortId(value: string): string {

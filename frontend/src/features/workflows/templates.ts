@@ -25,7 +25,7 @@ export const workflowTemplates: WorkflowTemplate[] = [
     description: "Ask a role to approve, then complete or reject.",
     nodes: [
       node("start-1", "start", 0, 0, { label: "Start" }),
-      node("approval-1", "approval", 280, 0, { label: "Approval", assigned_role: "manager" }),
+      node("approval-1", "approval", 280, 0, { label: "Approval", assigned_role: "member" }),
       node("approved-end", "end", 600, -90, { label: "Approved", result: "approved" }),
       node("rejected-end", "end", 600, 90, { label: "Rejected", result: "rejected" }),
     ],
@@ -45,7 +45,7 @@ export const workflowTemplates: WorkflowTemplate[] = [
         label: "Amount check",
         condition: { field: "input.amount", operator: "greater_than_or_equal", value: 1000 },
       }),
-      node("approval-1", "approval", 600, -90, { label: "Manager approval", assigned_role: "manager" }),
+      node("approval-1", "approval", 600, -90, { label: "Manager approval", assigned_role: "member" }),
       node("auto-end", "end", 600, 120, { label: "Auto complete", result: "auto_completed" }),
       node("approved-end", "end", 920, -160, { label: "Approved", result: "approved" }),
       node("rejected-end", "end", 920, 0, { label: "Rejected", result: "rejected" }),
@@ -64,7 +64,7 @@ export const workflowTemplates: WorkflowTemplate[] = [
     description: "Approve, wait for a delay, then complete.",
     nodes: [
       node("start-1", "start", 0, 0, { label: "Start" }),
-      node("approval-1", "approval", 280, 0, { label: "Approval", assigned_role: "manager" }),
+      node("approval-1", "approval", 280, 0, { label: "Approval", assigned_role: "member" }),
       node("delay-1", "delay", 600, -80, { label: "Wait", seconds: 3600 }),
       node("done-end", "end", 900, -80, { label: "Completed", result: "completed" }),
       node("rejected-end", "end", 600, 110, { label: "Rejected", result: "rejected" }),

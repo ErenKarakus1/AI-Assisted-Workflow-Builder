@@ -6,6 +6,7 @@ from app.schemas.workflow import WorkflowValidationIssue, WorkflowValidationResu
 SUPPORTED_NODE_TYPES = {"start", "approval", "condition", "delay", "end"}
 CONDITION_BRANCHES = {"true", "false"}
 APPROVAL_OUTCOMES = {"approve", "reject"}
+SUPPORTED_APPROVAL_ROLES = {"owner", "admin", "member"}
 SUPPORTED_CONDITION_OPERATORS = {
     "equals",
     "not_equals",
@@ -312,6 +313,14 @@ class WorkflowValidator:
                     WorkflowValidationIssue(
                         code="approval_assignment_invalid",
                         message="Approval nodes must assign exactly one user or role",
+                        node_id=node.id,
+                    )
+                )
+            if has_role and assigned_role not in SUPPORTED_APPROVAL_ROLES:
+                errors.append(
+                    WorkflowValidationIssue(
+                        code="approval_role_unsupported",
+                        message="Approval role must be owner, admin, or member",
                         node_id=node.id,
                     )
                 )

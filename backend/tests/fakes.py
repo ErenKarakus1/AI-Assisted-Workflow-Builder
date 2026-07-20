@@ -62,6 +62,13 @@ class InMemoryOrganizationMemberRepository(OrganizationMemberRepository):
     async def list_by_user(self, user_id: str) -> list[OrganizationMember]:
         return [member for member in self.members_by_id.values() if member.user_id == user_id]
 
+    async def list_by_organization(self, organization_id: str) -> list[OrganizationMember]:
+        return [
+            member
+            for member in self.members_by_id.values()
+            if member.organization_id == organization_id
+        ]
+
 
 class InMemoryWorkflowRepository(WorkflowRepository):
     def __init__(self) -> None:

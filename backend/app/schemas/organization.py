@@ -12,3 +12,10 @@ class OrganizationRead(BaseModel):
     name: str
     role: OrganizationRole
 
+
+class OrganizationMemberRead(BaseModel):
+    id: str
+    user_id: str
+    email: str
+    full_name: str
+    role: OrganizationRole

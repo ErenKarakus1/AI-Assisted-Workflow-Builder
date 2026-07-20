@@ -67,6 +67,9 @@ class TaskService:
         task = await self._get_for_org(organization_id, task_id, user)
         if task.assigned_user_id and task.assigned_user_id != user.id:
             raise TaskUnauthorizedError
+        membership = await self.members.get_by_user_and_org(user.id, organization_id)
+        if task.assigned_role and (not membership or membership.role != task.assigned_role):
+            raise TaskUnauthorizedError
         if task.status != TaskStatus.PENDING or task.revision != revision:
             raise TaskConflictError
 

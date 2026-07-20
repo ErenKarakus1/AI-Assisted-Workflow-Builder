@@ -145,3 +145,27 @@ def test_get_organization_for_member(client: TestClient) -> None:
     assert response.json()["name"] == "Member Org"
     assert response.json()["role"] == "owner"
 
+
+def test_list_organization_members_returns_user_friendly_members(client: TestClient) -> None:
+    token = register_and_login(client, "owner@example.com")
+    create_response = client.post(
+        "/api/orgs",
+        json={"name": "Member Directory Org"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    response = client.get(
+        f"/api/orgs/{create_response.json()['id']}/members",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": response.json()[0]["id"],
+            "user_id": response.json()[0]["user_id"],
+            "email": "owner@example.com",
+            "full_name": "Workflow User",
+            "role": "owner",
+        }
+    ]

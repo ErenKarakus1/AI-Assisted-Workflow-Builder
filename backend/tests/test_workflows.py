@@ -90,7 +90,7 @@ def approval_workflow_payload(name: str = "Approval Flow") -> dict:
                 "id": "approval-1",
                 "type": "approval",
                 "position": {"x": 160, "y": 0},
-                "data": {"assigned_role": "manager"},
+                "data": {"assigned_role": "member"},
             },
             {"id": "approved-end", "type": "end", "position": {"x": 320, "y": -80}, "data": {}},
             {"id": "rejected-end", "type": "end", "position": {"x": 320, "y": 80}, "data": {}},

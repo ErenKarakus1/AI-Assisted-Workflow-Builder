@@ -1,7 +1,8 @@
+from app.domain.auth.repository import UserRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
 from app.models.organization import Organization, OrganizationMember, OrganizationRole
 from app.models.user import User
-from app.schemas.organization import OrganizationCreate, OrganizationRead
+from app.schemas.organization import OrganizationCreate, OrganizationMemberRead, OrganizationRead
 
 
 class OrganizationNotFoundError(Exception):
@@ -64,3 +65,32 @@ class OrganizationService:
 
         return OrganizationRead(id=organization.id, name=organization.name, role=membership.role)
 
+    async def list_members(
+        self,
+        organization_id: str,
+        user: User,
+        users: UserRepository,
+    ) -> list[OrganizationMemberRead]:
+        membership = await self.members.get_by_user_and_org(user.id, organization_id)
+        if not membership:
+            raise OrganizationAccessDeniedError
+
+        organization = await self.organizations.get_by_id(organization_id)
+        if not organization:
+            raise OrganizationNotFoundError
+
+        result: list[OrganizationMemberRead] = []
+        for member in await self.members.list_by_organization(organization_id):
+            member_user = await users.get_by_id(member.user_id)
+            if member_user:
+                result.append(
+                    OrganizationMemberRead(
+                        id=member.id,
+                        user_id=member.user_id,
+                        email=member_user.email,
+                        full_name=member_user.full_name,
+                        role=member.role,
+                    )
+                )
+
+        return result

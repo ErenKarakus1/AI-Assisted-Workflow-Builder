@@ -1,5 +1,5 @@
 import { apiRequest } from "./client";
-import type { Organization } from "../types/api";
+import type { Organization, OrganizationMember } from "../types/api";
 
 export function listOrganizations(): Promise<Organization[]> {
   return apiRequest<Organization[]>("/api/orgs");
@@ -12,3 +12,6 @@ export function createOrganization(name: string): Promise<Organization> {
   });
 }
 
+export function listOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
+  return apiRequest<OrganizationMember[]>(`/api/orgs/${organizationId}/members`);
+}

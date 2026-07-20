@@ -17,6 +17,14 @@ export type Organization = {
   role: "owner" | "admin" | "member";
 };
 
+export type OrganizationMember = {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string;
+  role: "owner" | "admin" | "member";
+};
+
 export type WorkflowStatus = "draft" | "active";
 
 export type WorkflowNode = {

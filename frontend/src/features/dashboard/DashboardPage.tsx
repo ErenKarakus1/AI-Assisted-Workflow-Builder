@@ -88,7 +88,7 @@ export function DashboardPage() {
               .map((task) => (
                 <div className="compact-row dashboard-row" key={task.id}>
                   <strong>{workflowName(task.workflow_id, activity.workflows)}</strong>
-                  <span>{task.assigned_role ? `Assigned to ${task.assigned_role}` : "Approval needed"}</span>
+                  <span>{task.assigned_role ? `Assigned to ${humanize(task.assigned_role)} role` : "Approval needed"}</span>
                   <Link className="text-link" to="/tasks">
                     Review task
                   </Link>
@@ -134,4 +134,10 @@ function workflowName(workflowId: string, workflows: Workflow[]): string {
 
 function shortId(value: string): string {
   return value.length > 8 ? value.slice(0, 8) : value;
+}
+
+function humanize(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

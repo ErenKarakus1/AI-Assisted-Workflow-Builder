@@ -32,6 +32,10 @@ class OrganizationMemberRepository(ABC):
     async def list_by_user(self, user_id: str) -> list[OrganizationMember]:
         raise NotImplementedError
 
+    @abstractmethod
+    async def list_by_organization(self, organization_id: str) -> list[OrganizationMember]:
+        raise NotImplementedError
+
 
 class MongoOrganizationRepository(OrganizationRepository):
     def __init__(self, database: AsyncIOMotorDatabase) -> None:
@@ -69,3 +73,7 @@ class MongoOrganizationMemberRepository(OrganizationMemberRepository):
         documents = await cursor.to_list(length=None)
         return [OrganizationMember(**document) for document in documents]
 
+    async def list_by_organization(self, organization_id: str) -> list[OrganizationMember]:
+        cursor = self.collection.find({"organization_id": organization_id})
+        documents = await cursor.to_list(length=None)
+        return [OrganizationMember(**document) for document in documents]

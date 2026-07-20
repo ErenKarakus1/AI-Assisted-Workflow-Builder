@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { listInstanceEvents, listWorkflowInstances, startWorkflowInstance } from "../../api/instances";
+import { listOrganizationMembers } from "../../api/organizations";
 import {
   activateWorkflow,
   deactivateWorkflow,
@@ -39,6 +40,11 @@ export function WorkflowDetailPage() {
     queryKey: ["workflow-instances", organizationId, workflowId],
     queryFn: () => listWorkflowInstances(organizationId, workflowId),
     enabled: Boolean(organizationId && workflowId),
+  });
+  const organizationMembersQuery = useQuery({
+    queryKey: ["organization-members", organizationId],
+    queryFn: () => listOrganizationMembers(organizationId),
+    enabled: Boolean(organizationId),
   });
   const effectiveSelectedInstanceId = selectedInstanceId ?? instancesQuery.data?.[0]?.id ?? null;
   const eventsQuery = useQuery({
@@ -253,6 +259,7 @@ export function WorkflowDetailPage() {
             onDirtyChange={handleDirtyChange}
             selectedInstance={selectedInstance}
             instanceEvents={eventsQuery.data ?? []}
+            organizationMembers={organizationMembersQuery.data ?? []}
           />
 
           <InstanceRunner

@@ -14,7 +14,14 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 
-import type { InstanceEvent, Workflow, WorkflowEdge, WorkflowInstance, WorkflowNode } from "../../types/api";
+import type {
+  InstanceEvent,
+  OrganizationMember,
+  Workflow,
+  WorkflowEdge,
+  WorkflowInstance,
+  WorkflowNode,
+} from "../../types/api";
 
 type Props = {
   workflow: Workflow;
@@ -25,6 +32,7 @@ type Props = {
   onDirtyChange: (isDirty: boolean) => void;
   selectedInstance: WorkflowInstance | null;
   instanceEvents: InstanceEvent[];
+  organizationMembers: OrganizationMember[];
 };
 
 type NodeKind = "start" | "approval" | "condition" | "delay" | "end";
@@ -39,7 +47,7 @@ const conditionOperators = [
   { value: "less_than_or_equal", label: "Less than or equal to" },
   { value: "contains", label: "Contains" },
 ];
-const approvalRoles = ["manager", "finance", "hr", "legal", "admin", "member"];
+const approvalRoles = ["owner", "admin", "member"];
 
 export function WorkflowGraphEditor({
   workflow,
@@ -50,6 +58,7 @@ export function WorkflowGraphEditor({
   onDirtyChange,
   selectedInstance,
   instanceEvents,
+  organizationMembers,
 }: Props) {
   const isEditable = workflow.status === "draft";
   const initialNodes = useMemo(() => workflow.nodes.map(toFlowNode), [workflow.nodes]);
@@ -280,6 +289,7 @@ export function WorkflowGraphEditor({
               node={selectedNode}
               isEditable={isEditable}
               onChange={updateSelectedNodeData}
+              organizationMembers={organizationMembers}
             />
           ) : selectedEdge ? (
             <EdgeConfigPanel
@@ -301,10 +311,12 @@ function NodeConfigPanel({
   node,
   isEditable,
   onChange,
+  organizationMembers,
 }: {
   node: Node;
   isEditable: boolean;
   onChange: (data: Record<string, unknown>) => void;
+  organizationMembers: OrganizationMember[];
 }) {
   const kind = workflowType(node);
   const data = workflowData(node);
@@ -327,27 +339,12 @@ function NodeConfigPanel({
       </label>
 
       {kind === "approval" ? (
-        <label>
-          Assigned role
-          <select
-            disabled={!isEditable}
-            value={stringValue(data.assigned_role)}
-            onChange={(event) =>
-              onChange({
-                ...data,
-                assigned_role: event.target.value || undefined,
-                assigned_user_id: undefined,
-              })
-            }
-          >
-            <option value="">Select role</option>
-            {approvalRoles.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
-        </label>
+        <ApprovalConfig
+          data={data}
+          isEditable={isEditable}
+          organizationMembers={organizationMembers}
+          onChange={onChange}
+        />
       ) : null}
 
       {kind === "condition" ? (
@@ -493,6 +490,100 @@ function DelayConfig({
   );
 }
 
+function ApprovalConfig({
+  data,
+  isEditable,
+  organizationMembers,
+  onChange,
+}: {
+  data: Record<string, unknown>;
+  isEditable: boolean;
+  organizationMembers: OrganizationMember[];
+  onChange: (data: Record<string, unknown>) => void;
+}) {
+  const assignmentType = stringValue(data.assigned_user_id) ? "user" : "role";
+
+  return (
+    <>
+      <label>
+        Assign approval to
+        <select
+          disabled={!isEditable}
+          value={assignmentType}
+          onChange={(event) => {
+            if (event.target.value === "user") {
+              onChange({
+                ...data,
+                assigned_user_id: organizationMembers[0]?.user_id,
+                assigned_role: undefined,
+              });
+              return;
+            }
+
+            onChange({
+              ...data,
+              assigned_role: stringValue(data.assigned_role) || "member",
+              assigned_user_id: undefined,
+            });
+          }}
+        >
+          <option value="role">A role</option>
+          <option value="user">A specific user</option>
+        </select>
+      </label>
+
+      {assignmentType === "user" ? (
+        <label>
+          Assigned user
+          <select
+            disabled={!isEditable || organizationMembers.length === 0}
+            value={stringValue(data.assigned_user_id)}
+            onChange={(event) =>
+              onChange({
+                ...data,
+                assigned_user_id: event.target.value || undefined,
+                assigned_role: undefined,
+              })
+            }
+          >
+            <option value="">Select user</option>
+            {organizationMembers.map((member) => (
+              <option key={member.id} value={member.user_id}>
+                {member.full_name || member.email} ({member.role})
+              </option>
+            ))}
+          </select>
+          {organizationMembers.length === 0 ? (
+            <span className="field-hint">No organization members are available yet.</span>
+          ) : null}
+        </label>
+      ) : (
+        <label>
+          Assigned role
+          <select
+            disabled={!isEditable}
+            value={stringValue(data.assigned_role)}
+            onChange={(event) =>
+              onChange({
+                ...data,
+                assigned_role: event.target.value || undefined,
+                assigned_user_id: undefined,
+              })
+            }
+          >
+            <option value="">Select role</option>
+            {approvalRoles.map((role) => (
+              <option key={role} value={role}>
+                {humanize(role)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+    </>
+  );
+}
+
 function EdgeConfigPanel({
   edge,
   sourceType,
@@ -533,7 +624,7 @@ function EdgeConfigPanel({
 
 function defaultNodeData(kind: NodeKind): Record<string, unknown> {
   if (kind === "approval") {
-    return { label: "Approval", assigned_role: "manager" };
+    return { label: "Approval", assigned_role: "member" };
   }
   if (kind === "condition") {
     return {
@@ -671,6 +762,12 @@ function stringValue(value: unknown): string {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
     ? String(value)
     : "";
+}
+
+function humanize(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function numberValue(value: unknown): number {
