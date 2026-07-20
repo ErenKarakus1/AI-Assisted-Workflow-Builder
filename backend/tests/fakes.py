@@ -1,6 +1,8 @@
 from app.domain.auth.repository import UserRepository
+from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
 from app.domain.workflows.repository import WorkflowRepository
+from app.models.instance import InstanceEvent, WorkflowInstance
 from app.models.organization import Organization, OrganizationMember
 from app.models.user import User
 from app.models.workflow import Workflow
@@ -81,3 +83,31 @@ class InMemoryWorkflowRepository(WorkflowRepository):
 
     async def delete(self, workflow_id: str) -> None:
         self.workflows_by_id.pop(workflow_id, None)
+
+
+class InMemoryWorkflowInstanceRepository(WorkflowInstanceRepository):
+    def __init__(self) -> None:
+        self.instances_by_id: dict[str, WorkflowInstance] = {}
+
+    async def create(self, instance: WorkflowInstance) -> WorkflowInstance:
+        self.instances_by_id[instance.id] = instance
+        return instance
+
+    async def get_by_id(self, instance_id: str) -> WorkflowInstance | None:
+        return self.instances_by_id.get(instance_id)
+
+    async def update(self, instance: WorkflowInstance) -> WorkflowInstance:
+        self.instances_by_id[instance.id] = instance
+        return instance
+
+
+class InMemoryInstanceEventRepository(InstanceEventRepository):
+    def __init__(self) -> None:
+        self.events: list[InstanceEvent] = []
+
+    async def append(self, event: InstanceEvent) -> InstanceEvent:
+        self.events.append(event)
+        return event
+
+    async def list_by_instance(self, instance_id: str) -> list[InstanceEvent]:
+        return [event for event in self.events if event.instance_id == instance_id]

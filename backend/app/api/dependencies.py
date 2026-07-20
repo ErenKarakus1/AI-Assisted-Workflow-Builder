@@ -7,6 +7,12 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.security import decode_token
 from app.db.mongo import database_dependency
+from app.domain.instances.repository import (
+    InstanceEventRepository,
+    MongoInstanceEventRepository,
+    MongoWorkflowInstanceRepository,
+    WorkflowInstanceRepository,
+)
 from app.domain.auth.repository import MongoUserRepository, UserRepository
 from app.domain.orgs.repository import (
     MongoOrganizationMemberRepository,
@@ -42,6 +48,18 @@ async def workflow_repository_dependency(
     database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
 ) -> WorkflowRepository:
     return MongoWorkflowRepository(database)
+
+
+async def workflow_instance_repository_dependency(
+    database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
+) -> WorkflowInstanceRepository:
+    return MongoWorkflowInstanceRepository(database)
+
+
+async def instance_event_repository_dependency(
+    database: Annotated[AsyncIOMotorDatabase, Depends(database_dependency)],
+) -> InstanceEventRepository:
+    return MongoInstanceEventRepository(database)
 
 
 async def current_user_dependency(
