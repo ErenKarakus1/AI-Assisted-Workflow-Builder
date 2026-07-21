@@ -21,7 +21,11 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
-    "eslint": "^9.13.0",
+    "@eslint/js": "^9.x",
+    "typescript-eslint": "^8.x",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.5.x",
+    "globals": "^16.x",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
   }
