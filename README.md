@@ -76,7 +76,7 @@ Workflows are built from five node types:
 * `condition` — chooses a path based on workflow input context
 * `approval` — pauses execution until an authorized user approves or rejects
 * `delay` — pauses execution for a configured duration
-* `end` — completes the workflow instance with a results
+* `end` — completes the workflow instance with a result
 
 A workflow begins as a draft. Draft workflows can be edited and validated before activation.
 
@@ -245,7 +245,7 @@ backend/
 frontend/
   src/
     api/          API client functions
-    app/          Application shell and routing
+    app/          Application setup and shell
     components/   Shared layout and UI components
     features/     Feature pages and workflow UI
     lib/          Shared utilities
@@ -413,7 +413,7 @@ RATE_LIMIT_ENABLED=false
 RATE_LIMIT_FAIL_OPEN=true
 ```
 
-Docker Compose enables rate limiting for the containerized API and worker environments.
+Docker Compose enables rate limiting for the containerized API.
 
 When `RATE_LIMIT_FAIL_OPEN` is enabled, requests are allowed if Redis is temporarily unavailable.
 
@@ -730,7 +730,6 @@ This prevents the frontend from loading an organization’s complete execution h
 
 ## Possible Future Improvements
 
-* GitHub Actions continuous integration
 * Frontend component and integration tests
 * HttpOnly-cookie-based refresh-token storage
 * Sliding-window or token-bucket rate limiting
