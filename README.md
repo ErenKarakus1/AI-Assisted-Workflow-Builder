@@ -258,7 +258,7 @@ frontend/
 
 ### Local Development
 
-* Python 3.11 or newer
+* Python 3.12 or newer
 * Node.js
 * npm
 * Docker, or locally installed MongoDB and Redis
