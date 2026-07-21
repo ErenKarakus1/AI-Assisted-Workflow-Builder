@@ -19,6 +19,24 @@ A visual workflow builder for organization-based approval processes. Users can c
 - Redis-backed rate limiting for auth, write actions, task decisions, instance starts, and AI calls
 - Optional AI workflow drafting and graph analysis
 
+## Architecture
+
+```mermaid
+flowchart LR
+  User[User] --> Web[React frontend<br/>nginx container]
+  Web --> API[FastAPI backend]
+
+  API --> Mongo[(MongoDB<br/>workflows, orgs, tasks, runs, events)]
+  API --> Redis[(Redis<br/>rate limiting)]
+  API --> OpenAI[OpenAI API<br/>optional AI drafting/analysis]
+
+  API --> Engine[Workflow engine]
+  Engine --> Tasks[Approval tasks]
+  Engine --> Runs[Workflow instances]
+  Engine --> Events[Event timeline]
+  Engine --> Delays[Delay scheduling]
+```
+
 ## Project Structure
 
 ```text
