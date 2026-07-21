@@ -19,6 +19,44 @@ A visual workflow builder for organization-based approval processes. Users can c
 - Redis-backed rate limiting for auth, write actions, task decisions, instance starts, and AI calls
 - Optional AI workflow drafting and graph analysis
 
+## How It Works
+
+Workflows are built from a small set of node types:
+
+- `start` - begins the workflow
+- `condition` - routes based on input/context values
+- `approval` - pauses execution until an authorized user approves or rejects
+- `delay` - waits for a configured duration before continuing
+- `end` - completes the instance with a result
+
+Draft workflows can be edited and validated before activation. Active workflows can be started as workflow instances. Each instance stores a graph snapshot, so older runs can still be viewed against the graph version they actually used.
+
+## Permissions
+
+Organizations support three roles:
+
+- Owner - full organization and workflow control
+- Admin - workflow/member management, except owner-only destructive actions
+- Member - can view org workflows and act only on approval tasks assigned to them, their role, or everyone
+
+Approval tasks can be assigned to a specific user, a specific role, Owner or Admin, or anyone in the organization. Owners/Admins can view org tasks for oversight, but task approval is still checked by the backend against the task assignment.
+
+## Runs and Tasks
+
+Runs and tasks are paginated with Load more buttons so large histories do not load all at once. Dashboard cards use backend stats for real counts, while dashboard preview lists stay intentionally small.
+
+Task search runs on the backend, so it can find tasks that have not been loaded into the browser yet.
+
+## AI Assistance
+
+AI support is optional. When `OPENAI_API_KEY` is configured, the workflow detail page can:
+
+- draft a graph from a natural-language prompt
+- use the current graph as a starting point
+- analyze the current graph and suggest improvements
+
+Generated graphs are still validated by the same deterministic workflow validator before they can be saved/activated.
+
 ## Architecture
 
 ```mermaid
@@ -159,3 +197,11 @@ Frontend build:
 cd frontend
 npm run build
 ```
+
+## Known Limitations
+
+- AI drafting is best-effort and may require manual review/editing before saving.
+- Rate limiting uses a fixed-window Redis counter, not a sliding-window algorithm.
+- The scheduler currently runs inside the FastAPI process instead of a separate worker container.
+- Workflow search is client-side because workflows are loaded per organization; runs/tasks use backend pagination.
+- Docker Compose is intended for local/demo deployment, not hardened production hosting.
