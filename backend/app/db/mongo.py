@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from pymongo import ASCENDING
+from pymongo import ASCENDING, DESCENDING
 
 from app.core.config import settings
 
@@ -31,7 +31,13 @@ async def ensure_indexes() -> None:
     await database.organization_members.create_index([("organization_id", ASCENDING)])
     await database.workflows.create_index([("organization_id", ASCENDING), ("id", ASCENDING)])
     await database.workflow_instances.create_index([("organization_id", ASCENDING), ("id", ASCENDING)])
+    await database.workflow_instances.create_index(
+        [("organization_id", ASCENDING), ("status", ASCENDING), ("started_at", DESCENDING)]
+    )
     await database.tasks.create_index([("organization_id", ASCENDING), ("status", ASCENDING)])
+    await database.tasks.create_index(
+        [("organization_id", ASCENDING), ("status", ASCENDING), ("created_at", DESCENDING)]
+    )
     await database.tasks.create_index(
         [("instance_id", ASCENDING), ("node_id", ASCENDING), ("status", ASCENDING)]
     )

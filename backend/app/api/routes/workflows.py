@@ -133,6 +133,8 @@ async def generate_workflow_graph(
             workflow_id,
             payload.prompt,
             payload.use_current_graph,
+            payload.current_nodes,
+            payload.current_edges,
             current_user,
             ai_service,
         )

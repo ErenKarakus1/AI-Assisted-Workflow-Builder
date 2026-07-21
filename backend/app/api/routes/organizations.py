@@ -4,11 +4,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies import (
     current_user_dependency,
+    instance_event_repository_dependency,
     organization_member_repository_dependency,
     organization_repository_dependency,
+    scheduled_job_repository_dependency,
+    task_repository_dependency,
     user_repository_dependency,
+    workflow_instance_repository_dependency,
+    workflow_repository_dependency,
 )
 from app.domain.auth.repository import UserRepository
+from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
 from app.domain.orgs.service import (
     OrganizationAccessDeniedError,
@@ -18,8 +24,21 @@ from app.domain.orgs.service import (
     OrganizationNotFoundError,
     OrganizationService,
 )
+from app.domain.scheduling.repository import ScheduledJobRepository
+from app.domain.tasks.repository import TaskRepository
+from app.domain.tasks.service import TaskService
+from app.domain.workflows.repository import WorkflowRepository
+from app.models.instance import WorkflowInstanceStatus
+from app.models.task import TaskStatus
 from app.models.user import User
-from app.schemas.organization import OrganizationCreate, OrganizationMemberCreate, OrganizationMemberRead, OrganizationRead
+from app.models.workflow import WorkflowStatus
+from app.schemas.organization import (
+    DashboardStatsRead,
+    OrganizationCreate,
+    OrganizationMemberCreate,
+    OrganizationMemberRead,
+    OrganizationRead,
+)
 
 router = APIRouter(prefix="/orgs", tags=["organizations"])
 
@@ -41,6 +60,42 @@ async def list_organizations(
     members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
 ) -> list[OrganizationRead]:
     return await OrganizationService(organizations, members).list_for_user(current_user)
+
+
+@router.get("/dashboard/stats", response_model=DashboardStatsRead)
+async def get_dashboard_stats(
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    organizations: Annotated[OrganizationRepository, Depends(organization_repository_dependency)],
+    members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
+    workflows: Annotated[WorkflowRepository, Depends(workflow_repository_dependency)],
+    instances: Annotated[WorkflowInstanceRepository, Depends(workflow_instance_repository_dependency)],
+    tasks: Annotated[TaskRepository, Depends(task_repository_dependency)],
+    events: Annotated[InstanceEventRepository, Depends(instance_event_repository_dependency)],
+    jobs: Annotated[ScheduledJobRepository, Depends(scheduled_job_repository_dependency)],
+) -> DashboardStatsRead:
+    user_organizations = await OrganizationService(organizations, members).list_for_user(current_user)
+    task_service = TaskService(tasks, workflows, instances, events, members, jobs)
+    workflow_count = 0
+    active_workflow_count = 0
+    pending_approval_count = 0
+    run_count = 0
+    waiting_run_count = 0
+
+    for organization in user_organizations:
+        workflow_count += await workflows.count_by_organization(organization.id)
+        active_workflow_count += await workflows.count_by_organization(organization.id, WorkflowStatus.ACTIVE)
+        pending_approval_count += await task_service.count_for_org(organization.id, current_user, TaskStatus.PENDING)
+        run_count += await instances.count_by_organization(organization.id)
+        waiting_run_count += await instances.count_by_organization(organization.id, WorkflowInstanceStatus.WAITING)
+
+    return DashboardStatsRead(
+        organizations=len(user_organizations),
+        workflows=workflow_count,
+        active_workflows=active_workflow_count,
+        pending_approvals=pending_approval_count,
+        runs=run_count,
+        waiting_runs=waiting_run_count,
+    )
 
 
 @router.get("/{organization_id}", response_model=OrganizationRead)

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { listInstanceEvents, listWorkflowInstances, startWorkflowInstance } from "../../api/instances";
@@ -19,6 +19,7 @@ import {
 import { errorMessage } from "../../lib/errors";
 import type {
   InstanceEvent,
+  OrganizationMember,
   WorkflowAIAnalyzeResult,
   WorkflowAIGenerateResult,
   WorkflowEdge,
@@ -30,8 +31,10 @@ import { WorkflowGraphEditor } from "./WorkflowGraphEditor";
 
 export function WorkflowDetailPage() {
   const { organizationId = "", workflowId = "" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const graphSectionRef = useRef<HTMLDivElement | null>(null);
   const [instanceInput, setInstanceInput] = useState("{}");
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
   const [instanceStatusFilter, setInstanceStatusFilter] = useState<InstanceStatusFilter>("all");
@@ -39,6 +42,7 @@ export function WorkflowDetailPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiDraft, setAiDraft] = useState<WorkflowAIGenerateResult | null>(null);
   const [useCurrentGraphForAI, setUseCurrentGraphForAI] = useState(false);
+  const [currentGraph, setCurrentGraph] = useState<{ nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null>(null);
   const workflowQuery = useQuery({
     queryKey: ["workflow", organizationId, workflowId],
     queryFn: () => getWorkflow(organizationId, workflowId),
@@ -117,7 +121,13 @@ export function WorkflowDetailPage() {
     },
   });
   const generateGraphMutation = useMutation({
-    mutationFn: () => generateWorkflowGraph(organizationId, workflowId, aiPrompt, useCurrentGraphForAI),
+    mutationFn: () => generateWorkflowGraph(
+      organizationId,
+      workflowId,
+      aiPrompt,
+      useCurrentGraphForAI,
+      useCurrentGraphForAI ? currentGraph : null,
+    ),
     onSuccess: (result) => {
       setSelectedInstanceId(null);
       setAiDraft(result.accepted ? result : null);
@@ -130,7 +140,11 @@ export function WorkflowDetailPage() {
       if (!displayWorkflow) {
         throw new Error("Workflow is not loaded");
       }
-      return analyzeWorkflowGraph(organizationId, workflowId, displayWorkflow);
+      const graphForAnalysis =
+        currentGraph && !selectedInstance
+          ? { ...displayWorkflow, nodes: currentGraph.nodes, edges: currentGraph.edges }
+          : displayWorkflow;
+      return analyzeWorkflowGraph(organizationId, workflowId, graphForAnalysis);
     },
   });
   const startInstanceMutation = useMutation({
@@ -164,8 +178,38 @@ export function WorkflowDetailPage() {
       return isDirty;
     });
   }, [resetValidate, resetValidateDraft]);
+  const handleGraphChange = useCallback((nodes: WorkflowNode[], edges: WorkflowEdge[]) => {
+    setCurrentGraph({ nodes, edges });
+  }, []);
 
   const workflow = workflowQuery.data;
+  const selectInstance = useCallback(
+    (instanceId: string | null) => {
+      setSelectedInstanceId(instanceId);
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        if (instanceId) {
+          next.set("instance", instanceId);
+        } else {
+          next.delete("instance");
+        }
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
+  const viewCurrentGraph = useCallback(() => {
+    selectInstance(null);
+    window.requestAnimationFrame(() => {
+      graphSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [selectInstance]);
+
+  useEffect(() => {
+    const instanceId = searchParams.get("instance");
+    setSelectedInstanceId(instanceId);
+  }, [searchParams]);
+
   const selectedOrganization = organizationsQuery.data?.find((organization) => organization.id === organizationId);
   const canManageWorkflow =
     selectedOrganization?.role === "owner" || selectedOrganization?.role === "admin";
@@ -221,10 +265,10 @@ export function WorkflowDetailPage() {
         edges: selectedInstance.workflow_edges,
       },
       {
-        onSuccess: () => setSelectedInstanceId(null),
+        onSuccess: () => selectInstance(null),
       },
     );
-  }, [hasInstanceGraphSnapshot, saveMutation, selectedInstance]);
+  }, [hasInstanceGraphSnapshot, saveMutation, selectInstance, selectedInstance]);
 
   return (
     <section className="page-stack">
@@ -433,7 +477,7 @@ export function WorkflowDetailPage() {
                     {saveMutation.isPending ? "Copying..." : "Copy to current draft"}
                   </button>
                 ) : null}
-                <button className="button button--ghost button--small" type="button" onClick={() => setSelectedInstanceId(null)}>
+                <button className="button button--ghost button--small" type="button" onClick={viewCurrentGraph}>
                   View current graph
                 </button>
               </div>
@@ -441,7 +485,7 @@ export function WorkflowDetailPage() {
           ) : selectedInstance ? (
             <div className="warning-panel snapshot-panel">
               <p>This instance was created before graph snapshots were stored, so the current graph is shown instead.</p>
-              <button className="button button--ghost button--small" type="button" onClick={() => setSelectedInstanceId(null)}>
+              <button className="button button--ghost button--small" type="button" onClick={viewCurrentGraph}>
                 View current graph
               </button>
             </div>
@@ -481,25 +525,28 @@ export function WorkflowDetailPage() {
             </p>
           ) : null}
 
-          <WorkflowGraphEditor
-            key={
-              selectedInstance
-                ? `instance-${selectedInstance.id}`
-                : aiDraft
-                  ? `ai-draft-${workflow.id}-${generateGraphMutation.submittedAt}`
-                  : `workflow-${workflow.id}-${workflow.revision}`
-            }
-            workflow={displayWorkflow}
-            isSaving={saveMutation.isPending}
-            onSave={(nodes, edges) => saveMutation.mutate({ nodes, edges })}
-            isValidatingDraft={validateDraftMutation.isPending}
-            onValidateDraft={(nodes, edges) => validateDraftMutation.mutate({ nodes, edges })}
-            onDirtyChange={handleDirtyChange}
-            selectedInstance={selectedInstance}
-            instanceEvents={eventsQuery.data ?? []}
-            organizationMembers={organizationMembersQuery.data ?? []}
-            canManageWorkflow={canManageWorkflow}
-          />
+          <div ref={graphSectionRef}>
+            <WorkflowGraphEditor
+              key={
+                selectedInstance
+                  ? `instance-${selectedInstance.id}`
+                  : aiDraft
+                    ? `ai-draft-${workflow.id}-${generateGraphMutation.submittedAt}`
+                    : `workflow-${workflow.id}-${workflow.revision}`
+              }
+              workflow={displayWorkflow}
+              isSaving={saveMutation.isPending}
+              onSave={(nodes, edges) => saveMutation.mutate({ nodes, edges })}
+              isValidatingDraft={validateDraftMutation.isPending}
+              onValidateDraft={(nodes, edges) => validateDraftMutation.mutate({ nodes, edges })}
+              onDirtyChange={handleDirtyChange}
+              onGraphChange={handleGraphChange}
+              selectedInstance={selectedInstance}
+              instanceEvents={eventsQuery.data ?? []}
+              organizationMembers={organizationMembersQuery.data ?? []}
+              canManageWorkflow={canManageWorkflow}
+            />
+          </div>
 
           <InstanceRunner
             workflowStatus={workflow.status}
@@ -515,10 +562,11 @@ export function WorkflowDetailPage() {
             onStatusFilterChange={setInstanceStatusFilter}
             selectedInstance={selectedInstance}
             selectedInstanceId={selectedInstanceId}
-            onSelectInstance={setSelectedInstanceId}
-            onClearSelectedInstance={() => setSelectedInstanceId(null)}
+            onSelectInstance={selectInstance}
+            onClearSelectedInstance={viewCurrentGraph}
             events={eventsQuery.data ?? []}
             areEventsLoading={eventsQuery.isLoading}
+            organizationMembers={organizationMembersQuery.data ?? []}
           />
 
           <div className="split-panel">
@@ -552,6 +600,7 @@ function InstanceRunner({
   onClearSelectedInstance,
   events,
   areEventsLoading,
+  organizationMembers,
 }: {
   workflowStatus: string;
   canManageWorkflow: boolean;
@@ -570,6 +619,7 @@ function InstanceRunner({
   onClearSelectedInstance: () => void;
   events: InstanceEvent[];
   areEventsLoading: boolean;
+  organizationMembers: OrganizationMember[];
 }) {
   const inputError = parseJsonObjectError(input);
   const canStart = workflowStatus === "active" && !isStarting && !inputError && !hasUnsavedGraphChanges;
@@ -675,6 +725,7 @@ function InstanceRunner({
             <div className="compact-row instance-summary">
               <strong>{humanize(selectedInstance.status)}</strong>
               <span>Instance {shortId(selectedInstance.id)}</span>
+              <span>Started {formatDateTime(selectedInstance.started_at)}</span>
               <span>Active node: {selectedInstance.active_node_id ?? "None"}</span>
               <span>Workflow revision: {selectedInstance.workflow_revision}</span>
               <span>
@@ -698,8 +749,11 @@ function InstanceRunner({
               events.map((event) => (
                 <div className="compact-row event-row" key={event.id}>
                   <strong>{humanize(event.type)}</strong>
+                  <span>{formatDateTime(event.created_at)}</span>
                   <span>{event.node_id ? `Node: ${event.node_id}` : "Workflow event"}</span>
-                  {Object.keys(event.data).length ? <code>{humanizeEventData(event.data)}</code> : null}
+                  {Object.keys(event.data).length ? (
+                    <code>{humanizeEventData(event.data, organizationMembers)}</code>
+                  ) : null}
                 </div>
               ))
             ) : !areEventsLoading ? (
@@ -885,10 +939,30 @@ function shortId(value: string): string {
   return value.length > 8 ? value.slice(0, 8) : value;
 }
 
-function humanizeEventData(data: Record<string, unknown>): string {
+function humanizeEventData(data: Record<string, unknown>, members: OrganizationMember[]): string {
   return Object.entries(data)
-    .map(([key, value]) => `${humanize(key)}: ${String(value)}`)
+    .map(([key, value]) => {
+      if (key === "completed_by_user_id" && typeof value === "string") {
+        return `Completed by: ${memberName(value, members)}`;
+      }
+      return `${humanize(key)}: ${String(value)}`;
+    })
     .join(", ");
+}
+
+function memberName(userId: string, members: OrganizationMember[]): string {
+  const member = members.find((item) => item.user_id === userId);
+  if (!member) {
+    return `user ${shortId(userId)}`;
+  }
+  return member.full_name ? `${member.full_name} (${member.email})` : member.email;
+}
+
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 function parseJsonObject(value: string): Record<string, unknown> {

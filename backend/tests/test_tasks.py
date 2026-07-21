@@ -172,14 +172,14 @@ def test_approval_node_creates_pending_task_and_waits(client: TestClient) -> Non
 
     assert instance["status"] == "waiting"
     assert tasks_response.status_code == 200
-    assert tasks_response.json()[0]["status"] == "pending"
-    assert tasks_response.json()[0]["assigned_user_id"] == user_id
+    assert tasks_response.json()["items"][0]["status"] == "pending"
+    assert tasks_response.json()["items"][0]["assigned_user_id"] == user_id
 
 
 def test_approve_task_resumes_instance_to_approved_end(client: TestClient) -> None:
     token, org_id, user_id = register_login_create_org(client, "owner@example.com")
     instance = create_activate_start(client, token, org_id, approval_workflow_payload(user_id))
-    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {token}"}).json()[0]
+    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {token}"}).json()["items"][0]
 
     response = client.post(
         f"/api/orgs/{org_id}/tasks/{task['id']}/approve",
@@ -201,7 +201,7 @@ def test_approve_task_resumes_instance_to_approved_end(client: TestClient) -> No
 def test_approve_task_persists_delay_job_when_next_node_is_delay(client: TestClient) -> None:
     token, org_id, user_id = register_login_create_org(client, "owner@example.com")
     create_activate_start(client, token, org_id, approval_then_delay_workflow_payload(user_id))
-    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {token}"}).json()[0]
+    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {token}"}).json()["items"][0]
 
     response = client.post(
         f"/api/orgs/{org_id}/tasks/{task['id']}/approve",
@@ -216,7 +216,7 @@ def test_approve_task_persists_delay_job_when_next_node_is_delay(client: TestCli
 def test_reject_task_resumes_instance_to_rejected_end(client: TestClient) -> None:
     token, org_id, user_id = register_login_create_org(client, "owner@example.com")
     instance = create_activate_start(client, token, org_id, approval_workflow_payload(user_id))
-    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {token}"}).json()[0]
+    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {token}"}).json()["items"][0]
 
     response = client.post(
         f"/api/orgs/{org_id}/tasks/{task['id']}/reject",
@@ -236,7 +236,7 @@ def test_reject_task_resumes_instance_to_rejected_end(client: TestClient) -> Non
 def test_duplicate_task_decision_returns_conflict(client: TestClient) -> None:
     token, org_id, user_id = register_login_create_org(client, "owner@example.com")
     create_activate_start(client, token, org_id, approval_workflow_payload(user_id))
-    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {token}"}).json()[0]
+    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {token}"}).json()["items"][0]
     client.post(
         f"/api/orgs/{org_id}/tasks/{task['id']}/approve",
         json={"revision": task["revision"]},
@@ -256,7 +256,7 @@ def test_task_assigned_to_another_user_is_forbidden(client: TestClient) -> None:
     owner_token, org_id, owner_id = register_login_create_org(client, "owner@example.com")
     other_token, _, _ = register_login_create_org(client, "other@example.com")
     create_activate_start(client, owner_token, org_id, approval_workflow_payload(owner_id))
-    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {owner_token}"}).json()[0]
+    task = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {owner_token}"}).json()["items"][0]
 
     response = client.post(
         f"/api/orgs/{org_id}/tasks/{task['id']}/approve",
@@ -292,7 +292,7 @@ def test_owner_or_admin_role_task_can_be_approved_by_admin(client: TestClient) -
         f"/api/orgs/{org_id}/tasks",
         headers={"Authorization": f"Bearer {admin_login.json()['access_token']}"},
     )
-    task = tasks_response.json()[0]
+    task = tasks_response.json()["items"][0]
     response = client.post(
         f"/api/orgs/{org_id}/tasks/{task['id']}/approve",
         json={"revision": task["revision"]},
@@ -329,7 +329,7 @@ def test_all_role_task_can_be_approved_by_member(client: TestClient) -> None:
         f"/api/orgs/{org_id}/tasks",
         headers={"Authorization": f"Bearer {member_login.json()['access_token']}"},
     )
-    task = tasks_response.json()[0]
+    task = tasks_response.json()["items"][0]
     response = client.post(
         f"/api/orgs/{org_id}/tasks/{task['id']}/approve",
         json={"revision": task["revision"]},
@@ -384,9 +384,9 @@ def test_member_task_list_only_shows_matching_user_or_role_tasks(client: TestCli
     )
 
     assert response.status_code == 200
-    assert len(response.json()) == 2
-    assert {task["assigned_user_id"] for task in response.json()} == {member_register.json()["id"], None}
-    assert {task["assigned_role"] for task in response.json()} == {"member", None}
+    assert len(response.json()["items"]) == 2
+    assert {task["assigned_user_id"] for task in response.json()["items"]} == {member_register.json()["id"], None}
+    assert {task["assigned_role"] for task in response.json()["items"]} == {"member", None}
 
 
 def test_owner_task_list_shows_all_org_tasks(client: TestClient) -> None:
@@ -411,4 +411,4 @@ def test_owner_task_list_shows_all_org_tasks(client: TestClient) -> None:
     response = client.get(f"/api/orgs/{org_id}/tasks", headers={"Authorization": f"Bearer {owner_token}"})
 
     assert response.status_code == 200
-    assert len(response.json()) == 3
+    assert len(response.json()["items"]) == 3

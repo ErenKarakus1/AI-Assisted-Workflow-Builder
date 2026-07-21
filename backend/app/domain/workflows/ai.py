@@ -37,9 +37,15 @@ class WorkflowAIService:
         workflow: Workflow,
         prompt: str,
         use_current_graph: bool = False,
+        current_nodes: list[WorkflowNode] | None = None,
+        current_edges: list[WorkflowEdge] | None = None,
     ) -> WorkflowAIGenerateResponse:
         if not settings.openai_api_key:
             raise AIConfigurationError
+
+        source_workflow = workflow
+        if use_current_graph and current_nodes is not None and current_edges is not None:
+            source_workflow = workflow.model_copy(update={"nodes": current_nodes, "edges": current_edges})
 
         client = AsyncOpenAI(api_key=settings.openai_api_key)
         try:
@@ -55,8 +61,8 @@ class WorkflowAIService:
                                 "text": json.dumps(
                                     {
                                         "workflow_name": workflow.name,
-                                        "current_nodes": [node.model_dump() for node in workflow.nodes],
-                                        "current_edges": [edge.model_dump() for edge in workflow.edges],
+                                        "current_nodes": [node.model_dump() for node in source_workflow.nodes],
+                                        "current_edges": [edge.model_dump() for edge in source_workflow.edges],
                                         "mode": "modify_current_graph"
                                         if use_current_graph
                                         else "create_fresh_graph",
@@ -92,7 +98,7 @@ class WorkflowAIService:
         if len(generated.nodes) < 2:
             raise AIGenerationError
 
-        draft = workflow.model_copy(
+        draft = source_workflow.model_copy(
             update={
                 "nodes": generated.nodes,
                 "edges": generated.edges,

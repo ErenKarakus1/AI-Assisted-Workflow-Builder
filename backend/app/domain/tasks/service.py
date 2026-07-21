@@ -11,7 +11,7 @@ from app.models.instance import InstanceEvent, InstanceEventType, WorkflowInstan
 from app.models.organization import OrganizationRole
 from app.models.task import Task, TaskDecision, TaskStatus
 from app.models.user import User
-from app.schemas.task import TaskRead
+from app.schemas.task import TaskPageRead, TaskRead
 
 
 class TaskNotFoundError(Exception):
@@ -43,12 +43,34 @@ class TaskService:
         self.members = members
         self.jobs = jobs
 
-    async def list_for_org(self, organization_id: str, user: User) -> list[TaskRead]:
+    async def list_for_org(
+        self,
+        organization_id: str,
+        user: User,
+        status: TaskStatus | None = None,
+        limit: int = 50,
+        before: datetime | None = None,
+    ) -> TaskPageRead:
         membership = await self._get_membership(organization_id, user)
-        tasks = await self.tasks.list_by_organization(organization_id)
+        repository_limit = limit + 1 if membership.role in {OrganizationRole.OWNER, OrganizationRole.ADMIN} else None
+        tasks = await self.tasks.list_by_organization(organization_id, status, repository_limit, before)
         if membership.role not in {OrganizationRole.OWNER, OrganizationRole.ADMIN}:
             tasks = [task for task in tasks if self._is_task_visible_to_member(task, user.id, membership.role)]
-        return [self._read(task) for task in tasks]
+        page_items = tasks[:limit]
+        next_cursor = page_items[-1].created_at if len(tasks) > limit and page_items else None
+        return TaskPageRead(items=[self._read(task) for task in page_items], next_cursor=next_cursor)
+
+    async def count_for_org(
+        self,
+        organization_id: str,
+        user: User,
+        status: TaskStatus | None = None,
+    ) -> int:
+        membership = await self._get_membership(organization_id, user)
+        if membership.role in {OrganizationRole.OWNER, OrganizationRole.ADMIN}:
+            return await self.tasks.count_by_organization(organization_id, status)
+        tasks = await self.tasks.list_by_organization(organization_id, status)
+        return len([task for task in tasks if self._is_task_visible_to_member(task, user.id, membership.role)])
 
     async def get(self, organization_id: str, task_id: str, user: User) -> TaskRead:
         task = await self._get_for_org(organization_id, task_id, user)
@@ -99,7 +121,7 @@ class TaskService:
                 if decision == TaskDecision.APPROVE
                 else InstanceEventType.TASK_REJECTED,
                 node_id=task.node_id,
-                data={"task_id": task.id},
+                data={"task_id": task.id, "completed_by_user_id": user.id},
             )
         )
 
@@ -160,4 +182,6 @@ class TaskService:
             decision=task.decision,
             completed_by_user_id=task.completed_by_user_id,
             revision=task.revision,
+            created_at=task.created_at,
+            completed_at=task.completed_at,
         )

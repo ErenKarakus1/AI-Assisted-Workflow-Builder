@@ -156,6 +156,10 @@ export function OrganizationsPage() {
                 </div>
                 <code>{selectedOrg.id}</code>
               </article>
+              <article className="help-panel role-summary">
+                <strong>{roleSummaryTitle(selectedOrg.role)}</strong>
+                <span>{roleSummaryText(selectedOrg.role)}</span>
+              </article>
 
               <div className="workspace-detail-grid">
                 <article className={canManageMembers(selectedOrg.role) ? "workspace-card" : "workspace-card workspace-card--wide"}>
@@ -306,4 +310,24 @@ function canRemoveMember(actorRole: string, memberRole: string): boolean {
 
 function canManageMembers(role: string): boolean {
   return role === "owner" || role === "admin";
+}
+
+function roleSummaryTitle(role: string): string {
+  if (role === "owner") {
+    return "Owner permissions";
+  }
+  if (role === "admin") {
+    return "Admin permissions";
+  }
+  return "Member permissions";
+}
+
+function roleSummaryText(role: string): string {
+  if (role === "owner") {
+    return "You can manage members, create and edit workflows, run workflows, and delete this organization.";
+  }
+  if (role === "admin") {
+    return "You can manage members, create and edit workflows, and run workflows. Only owners can delete the organization.";
+  }
+  return "You can view workflows and run active workflows. Owners and admins manage workflow changes.";
 }

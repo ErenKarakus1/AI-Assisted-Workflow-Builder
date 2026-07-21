@@ -20,6 +20,7 @@ export function AppLayout() {
           <NavLink to="/organizations">Organizations</NavLink>
           <NavLink to="/workflows">Workflows</NavLink>
           <NavLink to="/tasks">Tasks</NavLink>
+          <NavLink to="/runs">Runs</NavLink>
         </nav>
         <div className="sidebar-footer">
           <span>{user?.email}</span>
@@ -41,4 +42,3 @@ export function AppLayout() {
     </div>
   );
 }
-

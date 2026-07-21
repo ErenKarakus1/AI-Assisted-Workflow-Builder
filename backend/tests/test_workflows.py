@@ -28,6 +28,8 @@ class FakeWorkflowAIService:
         workflow: Workflow,
         prompt: str,
         use_current_graph: bool = False,
+        current_nodes=None,
+        current_edges=None,
     ) -> WorkflowAIGenerateResponse:
         nodes = [
             WorkflowNode(id="start-1", type="start", position={"x": 0, "y": 0}, data={"label": "Start"}),

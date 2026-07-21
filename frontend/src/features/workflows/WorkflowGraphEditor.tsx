@@ -30,6 +30,7 @@ type Props = {
   isValidatingDraft: boolean;
   onValidateDraft: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void;
   onDirtyChange: (isDirty: boolean) => void;
+  onGraphChange?: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void;
   selectedInstance: WorkflowInstance | null;
   instanceEvents: InstanceEvent[];
   organizationMembers: OrganizationMember[];
@@ -63,6 +64,7 @@ export function WorkflowGraphEditor({
   isValidatingDraft,
   onValidateDraft,
   onDirtyChange,
+  onGraphChange,
   selectedInstance,
   instanceEvents,
   organizationMembers,
@@ -94,11 +96,13 @@ export function WorkflowGraphEditor({
   }, [initialEdges, initialNodes]);
 
   useEffect(() => {
+    const workflowNodes = nodes.map(toWorkflowNode);
+    const workflowEdges = edges.map(toWorkflowEdge);
+    onGraphChange?.(workflowNodes, workflowEdges);
     onDirtyChange(
-      graphFingerprint(nodes.map(toWorkflowNode), edges.map(toWorkflowEdge)) !==
-        graphFingerprint(workflow.nodes, workflow.edges),
+      graphFingerprint(workflowNodes, workflowEdges) !== graphFingerprint(workflow.nodes, workflow.edges),
     );
-  }, [edges, nodes, onDirtyChange, workflow.edges, workflow.nodes]);
+  }, [edges, nodes, onDirtyChange, onGraphChange, workflow.edges, workflow.nodes]);
 
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectedEdge = edges.find((edge) => edge.id === selectedEdgeId) ?? null;

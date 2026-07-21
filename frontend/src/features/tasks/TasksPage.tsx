@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { listOrganizationMembers, listOrganizations } from "../../api/organizations";
 import { approveTask, listTasks, rejectTask } from "../../api/tasks";
 import { listWorkflows } from "../../api/workflows";
 import { errorMessage } from "../../lib/errors";
-import type { OrganizationMember, Task, Workflow } from "../../types/api";
+import type { OrganizationMember, Task, TaskStatus, Workflow } from "../../types/api";
 import { useAuth } from "../auth/AuthProvider";
 
-type TaskStatusFilter = "all" | "pending" | "completed";
+type TaskStatusFilter = "all" | TaskStatus;
 type TaskAssignmentFilter = "all" | "actionable" | "user" | "role" | "oversight";
 
 export function TasksPage() {
@@ -29,10 +29,19 @@ export function TasksPage() {
     [organizationId, organizationsQuery.data],
   );
 
-  const tasksQuery = useQuery({
-    queryKey: ["tasks", organizationId],
-    queryFn: () => listTasks(organizationId),
-    enabled: Boolean(organizationId),
+  const pendingTasksQuery = useInfiniteQuery({
+    queryKey: ["tasks", organizationId, "pending"],
+    queryFn: ({ pageParam }) => listTasks(organizationId, { status: "pending", limit: 50, before: pageParam }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.next_cursor,
+    enabled: Boolean(organizationId) && statusFilter !== "completed",
+  });
+  const completedTasksQuery = useInfiniteQuery({
+    queryKey: ["tasks", organizationId, "completed"],
+    queryFn: ({ pageParam }) => listTasks(organizationId, { status: "completed", limit: 50, before: pageParam }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.next_cursor,
+    enabled: Boolean(organizationId) && statusFilter !== "pending",
   });
   const workflowsQuery = useQuery({
     queryKey: ["workflows", organizationId],
@@ -69,28 +78,33 @@ export function TasksPage() {
     [workflowsQuery.data],
   );
   const canSeeAllTasks = selectedOrg?.role === "owner" || selectedOrg?.role === "admin";
-  const filteredTasks = useMemo(
-    () =>
-      (tasksQuery.data ?? []).filter((task) =>
-        taskMatchesFilters({
-          task,
-          workflowsById,
-          searchTerm,
-          statusFilter,
-          assignmentFilter,
-          isActionable: isTaskActionable(task, user?.id, selectedOrg?.role),
-        }),
-      ),
-    [assignmentFilter, searchTerm, selectedOrg?.role, statusFilter, tasksQuery.data, user?.id, workflowsById],
-  );
   const pendingTasks = useMemo(
-    () => filteredTasks.filter((task) => task.status === "pending"),
-    [filteredTasks],
+    () =>
+      filterTasks({
+        tasks: pendingTasksQuery.data?.pages.flatMap((page) => page.items) ?? [],
+        workflowsById,
+        searchTerm,
+        assignmentFilter,
+        userId: user?.id,
+        role: selectedOrg?.role,
+      }),
+    [assignmentFilter, pendingTasksQuery.data, searchTerm, selectedOrg?.role, user?.id, workflowsById],
   );
   const completedTasks = useMemo(
-    () => filteredTasks.filter((task) => task.status === "completed"),
-    [filteredTasks],
+    () =>
+      filterTasks({
+        tasks: completedTasksQuery.data?.pages.flatMap((page) => page.items) ?? [],
+        workflowsById,
+        searchTerm,
+        assignmentFilter,
+        userId: user?.id,
+        role: selectedOrg?.role,
+      }),
+    [assignmentFilter, completedTasksQuery.data, searchTerm, selectedOrg?.role, user?.id, workflowsById],
   );
+  const hasMoreSearchableTasks =
+    (statusFilter !== "completed" && pendingTasksQuery.hasNextPage) ||
+    (statusFilter !== "pending" && completedTasksQuery.hasNextPage);
 
   return (
     <section className="page-stack">
@@ -119,7 +133,7 @@ export function TasksPage() {
         <>
           <div className="filter-bar filter-bar--three">
             <input
-              placeholder="Search tasks by workflow or approval"
+              placeholder="Search loaded tasks by workflow or approval"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
             />
@@ -139,11 +153,14 @@ export function TasksPage() {
               {canSeeAllTasks ? <option value="oversight">Oversight only</option> : null}
             </select>
           </div>
+          {searchTerm.trim() && hasMoreSearchableTasks ? (
+            <p className="field-hint">Search checks loaded tasks only. Load more to include older tasks.</p>
+          ) : null}
 
           {statusFilter !== "completed" ? (
             <TaskList
               title={canSeeAllTasks ? "Pending approvals" : "My pending approvals"}
-              emptyText={tasksQuery.isLoading ? "Loading tasks..." : "No pending approvals match your filters."}
+              emptyText={pendingTasksQuery.isLoading ? "Loading tasks..." : "No pending approvals match your filters."}
               tasks={pendingTasks}
               workflowsById={workflowsById}
               members={membersQuery.data ?? []}
@@ -155,12 +172,15 @@ export function TasksPage() {
               isTaskActionable={(task) => isTaskActionable(task, user?.id, selectedOrg?.role)}
               onApprove={(task) => approveMutation.mutate(task)}
               onReject={(task) => rejectMutation.mutate(task)}
+              hasNextPage={pendingTasksQuery.hasNextPage}
+              isFetchingNextPage={pendingTasksQuery.isFetchingNextPage}
+              onLoadMore={() => pendingTasksQuery.fetchNextPage()}
             />
           ) : null}
           {statusFilter !== "pending" ? (
             <TaskList
               title={canSeeAllTasks ? "Completed approvals" : "My completed approvals"}
-              emptyText="No completed approvals match your filters."
+              emptyText={completedTasksQuery.isLoading ? "Loading tasks..." : "No completed approvals match your filters."}
               tasks={completedTasks}
               workflowsById={workflowsById}
               members={membersQuery.data ?? []}
@@ -172,6 +192,9 @@ export function TasksPage() {
               isTaskActionable={() => false}
               onApprove={() => undefined}
               onReject={() => undefined}
+              hasNextPage={completedTasksQuery.hasNextPage}
+              isFetchingNextPage={completedTasksQuery.isFetchingNextPage}
+              onLoadMore={() => completedTasksQuery.fetchNextPage()}
             />
           ) : null}
         </>
@@ -196,6 +219,9 @@ function TaskList({
   isTaskActionable,
   onApprove,
   onReject,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
 }: {
   title: string;
   emptyText: string;
@@ -210,6 +236,9 @@ function TaskList({
   isTaskActionable: (task: Task) => boolean;
   onApprove: (task: Task) => void;
   onReject: (task: Task) => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
 }) {
   return (
     <article className="list-panel">
@@ -258,7 +287,45 @@ function TaskList({
       ) : (
         <p className="muted">{emptyText}</p>
       )}
+      {hasNextPage ? (
+        <div className="load-more-row">
+          <button
+            className="button button--ghost"
+            type="button"
+            disabled={isFetchingNextPage}
+            onClick={onLoadMore}
+          >
+            {isFetchingNextPage ? "Loading..." : "Load more"}
+          </button>
+        </div>
+      ) : null}
     </article>
+  );
+}
+
+function filterTasks({
+  tasks,
+  workflowsById,
+  searchTerm,
+  assignmentFilter,
+  userId,
+  role,
+}: {
+  tasks: Task[];
+  workflowsById: Map<string, Workflow>;
+  searchTerm: string;
+  assignmentFilter: TaskAssignmentFilter;
+  userId: string | undefined;
+  role: string | undefined;
+}): Task[] {
+  return tasks.filter((task) =>
+    taskMatchesFilters({
+      task,
+      workflowsById,
+      searchTerm,
+      assignmentFilter,
+      isActionable: isTaskActionable(task, userId, role),
+    }),
   );
 }
 
@@ -277,14 +344,12 @@ function taskMatchesFilters({
   task,
   workflowsById,
   searchTerm,
-  statusFilter,
   assignmentFilter,
   isActionable,
 }: {
   task: Task;
   workflowsById: Map<string, Workflow>;
   searchTerm: string;
-  statusFilter: TaskStatusFilter;
   assignmentFilter: TaskAssignmentFilter;
   isActionable: boolean;
 }): boolean {
@@ -297,7 +362,6 @@ function taskMatchesFilters({
     task.assigned_user_id ?? "",
   ].join(" ").toLowerCase();
   const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
-  const matchesStatus = statusFilter === "all" || task.status === statusFilter;
   const matchesAssignment =
     assignmentFilter === "all" ||
     (assignmentFilter === "actionable" && isActionable) ||
@@ -305,7 +369,7 @@ function taskMatchesFilters({
     (assignmentFilter === "role" && Boolean(task.assigned_role)) ||
     (assignmentFilter === "oversight" && !isActionable);
 
-  return matchesSearch && matchesStatus && matchesAssignment;
+  return matchesSearch && matchesAssignment;
 }
 
 function assignmentLabel(

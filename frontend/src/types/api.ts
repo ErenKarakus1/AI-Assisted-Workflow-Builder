@@ -25,6 +25,15 @@ export type OrganizationMember = {
   role: "owner" | "admin" | "member";
 };
 
+export type DashboardStats = {
+  organizations: number;
+  workflows: number;
+  active_workflows: number;
+  pending_approvals: number;
+  runs: number;
+  waiting_runs: number;
+};
+
 export type WorkflowStatus = "draft" | "active";
 
 export type WorkflowNode = {
@@ -101,6 +110,8 @@ export type Task = {
   decision: TaskDecision | null;
   completed_by_user_id: string | null;
   revision: number;
+  created_at: string;
+  completed_at: string | null;
 };
 
 export type WorkflowInstanceStatus = "running" | "completed" | "failed" | "waiting";
@@ -117,6 +128,19 @@ export type WorkflowInstance = {
   context: Record<string, unknown>;
   input: Record<string, unknown>;
   revision: number;
+  started_by_user_id: string;
+  started_at: string;
+  completed_at: string | null;
+};
+
+export type WorkflowInstancePage = {
+  items: WorkflowInstance[];
+  next_cursor: string | null;
+};
+
+export type TaskPage = {
+  items: Task[];
+  next_cursor: string | null;
 };
 
 export type InstanceEvent = {
@@ -127,4 +151,5 @@ export type InstanceEvent = {
   type: string;
   node_id: string | null;
   data: Record<string, unknown>;
+  created_at: string;
 };

@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
-import { listWorkflowInstances } from "../../api/instances";
-import { listOrganizations } from "../../api/organizations";
+import { listOrganizationRuns } from "../../api/instances";
+import { getDashboardStats, listOrganizations } from "../../api/organizations";
 import { listTasks } from "../../api/tasks";
 import { listWorkflows } from "../../api/workflows";
 import type { Organization, Task, Workflow, WorkflowInstance } from "../../types/api";
@@ -14,7 +14,12 @@ export function DashboardPage() {
     queryKey: ["dashboard-activity"],
     queryFn: loadDashboardActivity,
   });
+  const statsQuery = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: getDashboardStats,
+  });
   const activity = dashboardQuery.data;
+  const stats = statsQuery.data;
 
   return (
     <section className="page-stack">
@@ -35,33 +40,38 @@ export function DashboardPage() {
       <div className="metric-grid">
         <article className="metric-card">
           <span>Organizations</span>
-          <strong>{activity?.organizations.length ?? 0}</strong>
+          <strong>{stats?.organizations ?? activity?.organizations.length ?? 0}</strong>
         </article>
         <article className="metric-card">
           <span>Workflows</span>
-          <strong>{activity?.workflows.length ?? 0}</strong>
+          <strong>{stats?.workflows ?? activity?.workflows.length ?? 0}</strong>
         </article>
         <article className="metric-card">
           <span>Active workflows</span>
-          <strong>{activity?.workflows.filter((workflow) => workflow.status === "active").length ?? 0}</strong>
+          <strong>{stats?.active_workflows ?? activity?.workflows.filter((workflow) => workflow.status === "active").length ?? 0}</strong>
         </article>
         <article className="metric-card">
           <span>Pending approvals</span>
-          <strong>{activity?.tasks.filter((task) => task.status === "pending").length ?? 0}</strong>
+          <strong>{stats?.pending_approvals ?? activity?.tasks.filter((task) => task.status === "pending").length ?? 0}</strong>
         </article>
         <article className="metric-card">
           <span>Runs</span>
-          <strong>{activity?.instances.length ?? 0}</strong>
+          <strong>{stats?.runs ?? activity?.instances.length ?? 0}</strong>
         </article>
         <article className="metric-card">
           <span>Waiting runs</span>
-          <strong>{activity?.instances.filter((instance) => instance.status === "waiting").length ?? 0}</strong>
+          <strong>{stats?.waiting_runs ?? activity?.instances.filter((instance) => instance.status === "waiting").length ?? 0}</strong>
         </article>
       </div>
 
       <div className="split-panel dashboard-panel-grid">
         <article className="list-panel">
-          <div className="panel-heading">Recent workflow runs</div>
+          <div className="panel-heading">
+            <span>Recent workflow runs</span>
+            <Link className="text-link" to="/runs">
+              View runs
+            </Link>
+          </div>
           {activity?.instances.length ? (
             activity.instances.slice(0, 6).map((instance) => (
               <div className="compact-row dashboard-row" key={instance.id}>
@@ -69,7 +79,10 @@ export function DashboardPage() {
                 <span>
                   {humanize(instance.status)} - instance {shortId(instance.id)}
                 </span>
-                <Link className="text-link" to={`/workflows/${instance.organization_id}/${instance.workflow_id}`}>
+                <Link
+                  className="text-link"
+                  to={`/workflows/${instance.organization_id}/${instance.workflow_id}?instance=${instance.id}`}
+                >
                   Open run
                 </Link>
               </div>
@@ -120,18 +133,15 @@ type DashboardActivity = {
 async function loadDashboardActivity(): Promise<DashboardActivity> {
   const organizations = await listOrganizations();
   const workflowGroups = await Promise.all(organizations.map((org) => listWorkflows(org.id)));
-  const taskGroups = await Promise.all(organizations.map((org) => listTasks(org.id)));
+  const taskGroups = await Promise.all(organizations.map((org) => listTasks(org.id, { status: "pending", limit: 6 })));
+  const instanceGroups = await Promise.all(organizations.map((org) => listOrganizationRuns(org.id, { limit: 6 })));
   const workflows = workflowGroups.flat();
-  const tasks = taskGroups.flat();
-  const instanceGroups = await Promise.all(
-    workflows.map((workflow) => listWorkflowInstances(workflow.organization_id, workflow.id)),
-  );
 
   return {
     organizations,
     workflows,
-    tasks,
-    instances: instanceGroups.flat(),
+    tasks: taskGroups.flatMap((group) => group.items),
+    instances: instanceGroups.flatMap((group) => group.items),
   };
 }
 

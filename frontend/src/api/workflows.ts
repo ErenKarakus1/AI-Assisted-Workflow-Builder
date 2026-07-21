@@ -67,12 +67,18 @@ export function generateWorkflowGraph(
   workflowId: string,
   prompt: string,
   useCurrentGraph: boolean,
+  currentGraph: Pick<Workflow, "nodes" | "edges"> | null = null,
 ): Promise<WorkflowAIGenerateResult> {
   return apiRequest<WorkflowAIGenerateResult>(
     `/api/orgs/${organizationId}/workflows/${workflowId}/ai/generate-graph`,
     {
       method: "POST",
-      body: JSON.stringify({ prompt, use_current_graph: useCurrentGraph }),
+      body: JSON.stringify({
+        prompt,
+        use_current_graph: useCurrentGraph,
+        current_nodes: currentGraph?.nodes,
+        current_edges: currentGraph?.edges,
+      }),
     },
   );
 }

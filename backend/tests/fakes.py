@@ -1,15 +1,17 @@
+from datetime import datetime
+
 from app.domain.auth.repository import UserRepository
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
 from app.domain.scheduling.repository import ScheduledJobRepository
 from app.domain.tasks.repository import TaskRepository
 from app.domain.workflows.repository import WorkflowRepository
-from app.models.instance import InstanceEvent, WorkflowInstance
+from app.models.instance import InstanceEvent, WorkflowInstance, WorkflowInstanceStatus
 from app.models.organization import Organization, OrganizationMember
 from app.models.scheduled_job import ScheduledJob, ScheduledJobStatus
 from app.models.task import Task, TaskStatus
 from app.models.user import User
-from app.models.workflow import Workflow
+from app.models.workflow import Workflow, WorkflowStatus
 
 
 class InMemoryUserRepository(UserRepository):
@@ -102,6 +104,19 @@ class InMemoryWorkflowRepository(WorkflowRepository):
             if workflow.organization_id == organization_id
         ]
 
+    async def count_by_organization(
+        self,
+        organization_id: str,
+        status: WorkflowStatus | None = None,
+    ) -> int:
+        return len(
+            [
+                workflow
+                for workflow in self.workflows_by_id.values()
+                if workflow.organization_id == organization_id and (status is None or workflow.status == status)
+            ]
+        )
+
     async def update(self, workflow: Workflow) -> Workflow:
         self.workflows_by_id[workflow.id] = workflow
         return workflow
@@ -127,6 +142,35 @@ class InMemoryWorkflowInstanceRepository(WorkflowInstanceRepository):
             for instance in self.instances_by_id.values()
             if instance.organization_id == organization_id and instance.workflow_id == workflow_id
         ]
+
+    async def list_by_organization(
+        self,
+        organization_id: str,
+        status: WorkflowInstanceStatus | None = None,
+        limit: int = 50,
+        before: datetime | None = None,
+    ) -> list[WorkflowInstance]:
+        instances = [
+            instance
+            for instance in self.instances_by_id.values()
+            if instance.organization_id == organization_id
+            and (status is None or instance.status == status)
+            and (before is None or instance.started_at < before)
+        ]
+        return sorted(instances, key=lambda instance: instance.started_at, reverse=True)[:limit]
+
+    async def count_by_organization(
+        self,
+        organization_id: str,
+        status: WorkflowInstanceStatus | None = None,
+    ) -> int:
+        return len(
+            [
+                instance
+                for instance in self.instances_by_id.values()
+                if instance.organization_id == organization_id and (status is None or instance.status == status)
+            ]
+        )
 
     async def update(self, instance: WorkflowInstance) -> WorkflowInstance:
         self.instances_by_id[instance.id] = instance
@@ -166,8 +210,35 @@ class InMemoryTaskRepository(TaskRepository):
                 return task
         return None
 
-    async def list_by_organization(self, organization_id: str) -> list[Task]:
-        return [task for task in self.tasks_by_id.values() if task.organization_id == organization_id]
+    async def list_by_organization(
+        self,
+        organization_id: str,
+        status: TaskStatus | None = None,
+        limit: int | None = None,
+        before: datetime | None = None,
+    ) -> list[Task]:
+        tasks = [
+            task
+            for task in self.tasks_by_id.values()
+            if task.organization_id == organization_id
+            and (status is None or task.status == status)
+            and (before is None or task.created_at < before)
+        ]
+        tasks = sorted(tasks, key=lambda task: task.created_at, reverse=True)
+        return tasks[:limit] if limit is not None else tasks
+
+    async def count_by_organization(
+        self,
+        organization_id: str,
+        status: TaskStatus | None = None,
+    ) -> int:
+        return len(
+            [
+                task
+                for task in self.tasks_by_id.values()
+                if task.organization_id == organization_id and (status is None or task.status == status)
+            ]
+        )
 
     async def update(self, task: Task) -> Task:
         self.tasks_by_id[task.id] = task

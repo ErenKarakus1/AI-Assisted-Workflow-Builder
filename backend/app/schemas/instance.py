@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 from app.models.instance import InstanceEventType, WorkflowInstanceStatus
 from app.models.workflow import WorkflowEdge, WorkflowNode
@@ -20,6 +21,9 @@ class WorkflowInstanceRead(BaseModel):
     context: dict
     input: dict
     revision: int
+    started_by_user_id: str
+    started_at: datetime
+    completed_at: datetime | None
 
 
 class InstanceEventRead(BaseModel):
@@ -30,3 +34,9 @@ class InstanceEventRead(BaseModel):
     type: InstanceEventType
     node_id: str | None
     data: dict
+    created_at: datetime
+
+
+class WorkflowInstancePageRead(BaseModel):
+    items: list[WorkflowInstanceRead]
+    next_cursor: datetime | None

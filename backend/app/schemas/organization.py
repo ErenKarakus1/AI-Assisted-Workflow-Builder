@@ -24,3 +24,12 @@ class OrganizationMemberRead(BaseModel):
     email: str
     full_name: str
     role: OrganizationRole
+
+
+class DashboardStatsRead(BaseModel):
+    organizations: int
+    workflows: int
+    active_workflows: int
+    pending_approvals: int
+    runs: int
+    waiting_runs: int

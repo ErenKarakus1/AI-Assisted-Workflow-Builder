@@ -42,6 +42,8 @@ class WorkflowValidationResult(BaseModel):
 class WorkflowAIGenerateRequest(BaseModel):
     prompt: str = Field(min_length=8, max_length=2000)
     use_current_graph: bool = False
+    current_nodes: list[WorkflowNode] | None = None
+    current_edges: list[WorkflowEdge] | None = None
 
 
 class WorkflowAIGenerateResponse(BaseModel):

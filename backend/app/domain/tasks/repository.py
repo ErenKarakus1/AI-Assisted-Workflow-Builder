@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -19,7 +20,21 @@ class TaskRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def list_by_organization(self, organization_id: str) -> list[Task]:
+    async def list_by_organization(
+        self,
+        organization_id: str,
+        status: TaskStatus | None = None,
+        limit: int | None = None,
+        before: datetime | None = None,
+    ) -> list[Task]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def count_by_organization(
+        self,
+        organization_id: str,
+        status: TaskStatus | None = None,
+    ) -> int:
         raise NotImplementedError
 
     @abstractmethod
@@ -45,10 +60,31 @@ class MongoTaskRepository(TaskRepository):
         )
         return Task(**document) if document else None
 
-    async def list_by_organization(self, organization_id: str) -> list[Task]:
-        cursor = self.collection.find({"organization_id": organization_id})
-        documents = await cursor.to_list(length=None)
+    async def list_by_organization(
+        self,
+        organization_id: str,
+        status: TaskStatus | None = None,
+        limit: int | None = None,
+        before: datetime | None = None,
+    ) -> list[Task]:
+        query = {"organization_id": organization_id}
+        if status:
+            query["status"] = status
+        if before:
+            query["created_at"] = {"$lt": before}
+        cursor = self.collection.find(query).sort("created_at", -1)
+        documents = await cursor.to_list(length=limit)
         return [Task(**document) for document in documents]
+
+    async def count_by_organization(
+        self,
+        organization_id: str,
+        status: TaskStatus | None = None,
+    ) -> int:
+        query = {"organization_id": organization_id}
+        if status:
+            query["status"] = status
+        return await self.collection.count_documents(query)
 
     async def update(self, task: Task) -> Task:
         await self.collection.replace_one({"id": task.id}, task.model_dump())

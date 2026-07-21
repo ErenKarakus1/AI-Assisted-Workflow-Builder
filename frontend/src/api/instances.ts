@@ -1,5 +1,5 @@
 import { apiRequest } from "./client";
-import type { InstanceEvent, WorkflowInstance } from "../types/api";
+import type { InstanceEvent, WorkflowInstance, WorkflowInstancePage, WorkflowInstanceStatus } from "../types/api";
 
 export function listWorkflowInstances(
   organizationId: string,
@@ -8,6 +8,24 @@ export function listWorkflowInstances(
   return apiRequest<WorkflowInstance[]>(
     `/api/orgs/${organizationId}/workflows/${workflowId}/instances`,
   );
+}
+
+export function listOrganizationRuns(
+  organizationId: string,
+  options: { status?: WorkflowInstanceStatus | "all"; limit?: number; before?: string | null } = {},
+): Promise<WorkflowInstancePage> {
+  const params = new URLSearchParams();
+  if (options.status && options.status !== "all") {
+    params.set("status", options.status);
+  }
+  if (options.limit) {
+    params.set("limit", String(options.limit));
+  }
+  if (options.before) {
+    params.set("before", options.before);
+  }
+  const query = params.toString();
+  return apiRequest<WorkflowInstancePage>(`/api/orgs/${organizationId}/runs${query ? `?${query}` : ""}`);
 }
 
 export function startWorkflowInstance(

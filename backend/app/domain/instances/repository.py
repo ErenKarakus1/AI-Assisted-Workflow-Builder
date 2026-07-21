@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.models.instance import InstanceEvent, WorkflowInstance
+from app.models.instance import InstanceEvent, WorkflowInstance, WorkflowInstanceStatus
 
 
 class WorkflowInstanceRepository(ABC):
@@ -16,6 +17,24 @@ class WorkflowInstanceRepository(ABC):
 
     @abstractmethod
     async def list_by_workflow(self, organization_id: str, workflow_id: str) -> list[WorkflowInstance]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def list_by_organization(
+        self,
+        organization_id: str,
+        status: WorkflowInstanceStatus | None = None,
+        limit: int = 50,
+        before: datetime | None = None,
+    ) -> list[WorkflowInstance]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def count_by_organization(
+        self,
+        organization_id: str,
+        status: WorkflowInstanceStatus | None = None,
+    ) -> int:
         raise NotImplementedError
 
     @abstractmethod
@@ -51,6 +70,32 @@ class MongoWorkflowInstanceRepository(WorkflowInstanceRepository):
         ).sort("started_at", -1)
         documents = await cursor.to_list(length=None)
         return [WorkflowInstance(**document) for document in documents]
+
+    async def list_by_organization(
+        self,
+        organization_id: str,
+        status: WorkflowInstanceStatus | None = None,
+        limit: int = 50,
+        before: datetime | None = None,
+    ) -> list[WorkflowInstance]:
+        query = {"organization_id": organization_id}
+        if status:
+            query["status"] = status
+        if before:
+            query["started_at"] = {"$lt": before}
+        cursor = self.collection.find(query).sort("started_at", -1)
+        documents = await cursor.to_list(length=limit)
+        return [WorkflowInstance(**document) for document in documents]
+
+    async def count_by_organization(
+        self,
+        organization_id: str,
+        status: WorkflowInstanceStatus | None = None,
+    ) -> int:
+        query = {"organization_id": organization_id}
+        if status:
+            query["status"] = status
+        return await self.collection.count_documents(query)
 
     async def update(self, instance: WorkflowInstance) -> WorkflowInstance:
         await self.collection.replace_one({"id": instance.id}, instance.model_dump())

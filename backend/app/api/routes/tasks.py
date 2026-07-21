@@ -1,6 +1,7 @@
 from typing import Annotated
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies import (
     current_user_dependency,
@@ -18,8 +19,9 @@ from app.domain.scheduling.repository import ScheduledJobRepository
 from app.domain.tasks.repository import TaskRepository
 from app.domain.tasks.service import TaskConflictError, TaskNotFoundError, TaskService, TaskUnauthorizedError
 from app.domain.workflows.repository import WorkflowRepository
+from app.models.task import TaskStatus
 from app.models.user import User
-from app.schemas.task import TaskDecisionRequest, TaskRead
+from app.schemas.task import TaskDecisionRequest, TaskPageRead, TaskRead
 
 router = APIRouter(prefix="/orgs/{organization_id}/tasks", tags=["tasks"])
 
@@ -35,14 +37,17 @@ def task_service(
     return TaskService(tasks, workflows, instances, events, members, jobs)
 
 
-@router.get("", response_model=list[TaskRead])
+@router.get("", response_model=TaskPageRead)
 async def list_tasks(
     organization_id: str,
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[TaskService, Depends(task_service)],
-) -> list[TaskRead]:
+    status_filter: Annotated[TaskStatus | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    before: datetime | None = None,
+) -> TaskPageRead:
     try:
-        return await service.list_for_org(organization_id, current_user)
+        return await service.list_for_org(organization_id, current_user, status_filter, limit, before)
     except OrganizationAccessDeniedError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
 

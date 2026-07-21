@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 from app.models.task import TaskDecision, TaskStatus
 
@@ -15,7 +16,14 @@ class TaskRead(BaseModel):
     decision: TaskDecision | None
     completed_by_user_id: str | None
     revision: int
+    created_at: datetime
+    completed_at: datetime | None
 
 
 class TaskDecisionRequest(BaseModel):
     revision: int = Field(ge=1)
+
+
+class TaskPageRead(BaseModel):
+    items: list[TaskRead]
+    next_cursor: datetime | None

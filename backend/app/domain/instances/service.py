@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
@@ -5,10 +7,15 @@ from app.domain.scheduling.repository import ScheduledJobRepository
 from app.domain.tasks.repository import TaskRepository
 from app.domain.workflows.repository import WorkflowRepository
 from app.engine.runner import WorkflowEngine
-from app.models.instance import InstanceEvent, WorkflowInstance
+from app.models.instance import InstanceEvent, WorkflowInstance, WorkflowInstanceStatus
 from app.models.user import User
 from app.models.workflow import WorkflowStatus
-from app.schemas.instance import InstanceEventRead, WorkflowInstanceCreate, WorkflowInstanceRead
+from app.schemas.instance import (
+    InstanceEventRead,
+    WorkflowInstanceCreate,
+    WorkflowInstancePageRead,
+    WorkflowInstanceRead,
+)
 
 
 class WorkflowNotActiveError(Exception):
@@ -89,6 +96,23 @@ class WorkflowInstanceService:
         instances = await self.instances.list_by_workflow(organization_id, workflow_id)
         return [self._read_instance(instance) for instance in instances]
 
+    async def list_for_organization(
+        self,
+        organization_id: str,
+        user: User,
+        status: WorkflowInstanceStatus | None = None,
+        limit: int = 50,
+        before: datetime | None = None,
+    ) -> WorkflowInstancePageRead:
+        await self._ensure_membership(organization_id, user)
+        instances = await self.instances.list_by_organization(organization_id, status, limit + 1, before)
+        page_items = instances[:limit]
+        next_cursor = page_items[-1].started_at if len(instances) > limit and page_items else None
+        return WorkflowInstancePageRead(
+            items=[self._read_instance(instance) for instance in page_items],
+            next_cursor=next_cursor,
+        )
+
     async def list_events(
         self,
         organization_id: str,
@@ -129,6 +153,9 @@ class WorkflowInstanceService:
             context=instance.context,
             input=instance.input,
             revision=instance.revision,
+            started_by_user_id=instance.started_by_user_id,
+            started_at=instance.started_at,
+            completed_at=instance.completed_at,
         )
 
     def _read_event(self, event: InstanceEvent) -> InstanceEventRead:
@@ -140,4 +167,5 @@ class WorkflowInstanceService:
             type=event.type,
             node_id=event.node_id,
             data=event.data,
+            created_at=event.created_at,
         )

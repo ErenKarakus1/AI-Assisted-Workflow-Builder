@@ -354,6 +354,14 @@ p {
   color: #667085;
 }
 
+.role-summary {
+  gap: 4px;
+}
+
+.role-summary span {
+  color: #667085;
+}
+
 .danger-zone {
   border-color: #fecdca;
 }
@@ -806,9 +814,37 @@ textarea {
 .dashboard-row,
 .event-row,
 .instance-summary,
-.connection-row {
+.connection-row,
+.run-row {
   display: grid;
   gap: 8px;
+}
+
+.run-row {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 18px;
+}
+
+.run-row__title {
+  display: grid;
+  gap: 6px;
+}
+
+.run-row__meta {
+  display: grid;
+  gap: 4px;
+  color: #667085;
+}
+
+.load-more-row {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0 6px;
+}
+
+.load-more-row--runs {
+  padding: 28px 0 14px;
 }
 
 .dashboard-panel-grid {
@@ -1061,5 +1097,9 @@ code {
   .config-panel {
     border-left: 0;
     border-top: 1px solid #edf1f6;
+  }
+
+  .run-row {
+    grid-template-columns: 1fr;
   }
 }

@@ -6,7 +6,7 @@ from app.models.organization import OrganizationRole
 from app.domain.workflows.repository import WorkflowRepository
 from app.domain.workflows.validation import WorkflowValidator
 from app.models.user import User
-from app.models.workflow import Workflow, WorkflowStatus
+from app.models.workflow import Workflow, WorkflowEdge, WorkflowNode, WorkflowStatus
 from app.schemas.workflow import (
     WorkflowAIAnalyzeResponse,
     WorkflowAIGenerateResponse,
@@ -128,6 +128,8 @@ class WorkflowService:
         workflow_id: str,
         prompt: str,
         use_current_graph: bool,
+        current_nodes: list[WorkflowNode] | None,
+        current_edges: list[WorkflowEdge] | None,
         user: User,
         ai_service,
     ) -> WorkflowAIGenerateResponse:
@@ -136,7 +138,13 @@ class WorkflowService:
         if workflow.status != WorkflowStatus.DRAFT:
             raise WorkflowRevisionConflictError
 
-        return await ai_service.generate_graph(workflow, prompt, use_current_graph)
+        return await ai_service.generate_graph(
+            workflow,
+            prompt,
+            use_current_graph,
+            current_nodes,
+            current_edges,
+        )
 
     async def analyze_ai_graph(
         self,

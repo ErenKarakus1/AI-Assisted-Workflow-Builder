@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.models.workflow import Workflow
+from app.models.workflow import Workflow, WorkflowStatus
 
 
 class WorkflowRepository(ABC):
@@ -16,6 +16,14 @@ class WorkflowRepository(ABC):
 
     @abstractmethod
     async def list_by_organization(self, organization_id: str) -> list[Workflow]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def count_by_organization(
+        self,
+        organization_id: str,
+        status: WorkflowStatus | None = None,
+    ) -> int:
         raise NotImplementedError
 
     @abstractmethod
@@ -44,10 +52,19 @@ class MongoWorkflowRepository(WorkflowRepository):
         documents = await cursor.to_list(length=None)
         return [Workflow(**document) for document in documents]
 
+    async def count_by_organization(
+        self,
+        organization_id: str,
+        status: WorkflowStatus | None = None,
+    ) -> int:
+        query = {"organization_id": organization_id}
+        if status:
+            query["status"] = status
+        return await self.collection.count_documents(query)
+
     async def update(self, workflow: Workflow) -> Workflow:
         await self.collection.replace_one({"id": workflow.id}, workflow.model_dump())
         return workflow
 
     async def delete(self, workflow_id: str) -> None:
         await self.collection.delete_one({"id": workflow_id})
-
