@@ -739,3 +739,7 @@ This prevents the frontend from loading an organization’s complete execution h
 * Additional workflow node types
 * Production deployment configuration
 * Metrics, tracing, and structured monitoring
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
