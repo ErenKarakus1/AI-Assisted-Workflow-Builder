@@ -59,7 +59,7 @@ export function DashboardPage() {
         </article>
       </div>
 
-      <div className="split-panel">
+      <div className="split-panel dashboard-panel-grid">
         <article className="list-panel">
           <div className="panel-heading">Recent workflow runs</div>
           {activity?.instances.length ? (
@@ -88,14 +88,21 @@ export function DashboardPage() {
               .map((task) => (
                 <div className="compact-row dashboard-row" key={task.id}>
                   <strong>{workflowName(task.workflow_id, activity.workflows)}</strong>
-                  <span>{task.assigned_role ? `Assigned to ${humanize(task.assigned_role)} role` : "Assigned to a user"}</span>
+                  <span>{task.assigned_role ? `Assigned to ${approvalRoleLabel(task.assigned_role)}` : "Assigned to a user"}</span>
                   <Link className="text-link" to="/tasks">
                     Review task
                   </Link>
                 </div>
               ))
           ) : (
-            <p className="muted">{dashboardQuery.isLoading ? "Loading tasks..." : "No pending approvals."}</p>
+            <div className="dashboard-empty-state">
+              <strong>{dashboardQuery.isLoading ? "Loading approvals..." : "No approvals waiting"}</strong>
+              <span>
+                {dashboardQuery.isLoading
+                  ? "Checking your organizations for pending tasks."
+                  : "New approval tasks will show up here when a workflow reaches an approval node."}
+              </span>
+            </div>
           )}
         </article>
       </div>
@@ -140,4 +147,14 @@ function humanize(value: string): string {
   return value
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function approvalRoleLabel(role: string): string {
+  if (role === "owner_or_admin") {
+    return "Owner or Admin";
+  }
+  if (role === "all") {
+    return "Anyone in the org";
+  }
+  return `${humanize(role)} role`;
 }

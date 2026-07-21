@@ -8,6 +8,7 @@ import {
   activateWorkflow,
   deactivateWorkflow,
   deleteWorkflow,
+  generateWorkflowGraph,
   getWorkflow,
   updateWorkflow,
   validateWorkflow,
@@ -16,6 +17,7 @@ import {
 import { errorMessage } from "../../lib/errors";
 import type {
   InstanceEvent,
+  WorkflowAIGenerateResult,
   WorkflowEdge,
   WorkflowInstance,
   WorkflowNode,
@@ -31,6 +33,8 @@ export function WorkflowDetailPage() {
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
   const [instanceStatusFilter, setInstanceStatusFilter] = useState<InstanceStatusFilter>("all");
   const [hasUnsavedGraphChanges, setHasUnsavedGraphChanges] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiDraft, setAiDraft] = useState<WorkflowAIGenerateResult | null>(null);
   const workflowQuery = useQuery({
     queryKey: ["workflow", organizationId, workflowId],
     queryFn: () => getWorkflow(organizationId, workflowId),
@@ -98,8 +102,18 @@ export function WorkflowDetailPage() {
       return updateWorkflow({ ...workflowQuery.data, nodes, edges });
     },
     onSuccess: async () => {
+      setAiDraft(null);
       await queryClient.invalidateQueries({ queryKey: ["workflow", organizationId, workflowId] });
       await queryClient.invalidateQueries({ queryKey: ["workflows", organizationId] });
+    },
+  });
+  const generateGraphMutation = useMutation({
+    mutationFn: () => generateWorkflowGraph(organizationId, workflowId, aiPrompt),
+    onSuccess: (result) => {
+      setSelectedInstanceId(null);
+      setAiDraft(result.accepted ? result : null);
+      validateDraftMutation.reset();
+      validateMutation.reset();
     },
   });
   const startInstanceMutation = useMutation({
@@ -122,11 +136,16 @@ export function WorkflowDetailPage() {
   const resetValidate = validateMutation.reset;
   const resetValidateDraft = validateDraftMutation.reset;
   const handleDirtyChange = useCallback((isDirty: boolean) => {
-    setHasUnsavedGraphChanges(isDirty);
-    if (isDirty) {
-      resetValidate();
-      resetValidateDraft();
-    }
+    setHasUnsavedGraphChanges((current) => {
+      if (current === isDirty) {
+        return current;
+      }
+      if (isDirty) {
+        resetValidate();
+        resetValidateDraft();
+      }
+      return isDirty;
+    });
   }, [resetValidate, resetValidateDraft]);
 
   const workflow = workflowQuery.data;
@@ -141,7 +160,13 @@ export function WorkflowDetailPage() {
     selectedInstance?.workflow_nodes.length || selectedInstance?.workflow_edges.length,
   );
   const displayWorkflow =
-    workflow && selectedInstance && hasInstanceGraphSnapshot
+    workflow && aiDraft && !selectedInstance
+      ? {
+          ...workflow,
+          nodes: aiDraft.nodes,
+          edges: aiDraft.edges,
+        }
+      : workflow && selectedInstance && hasInstanceGraphSnapshot
       ? {
           ...workflow,
           nodes: selectedInstance.workflow_nodes,
@@ -154,6 +179,8 @@ export function WorkflowDetailPage() {
   );
   const canCopySelectedSnapshot =
     Boolean(selectedInstance && hasInstanceGraphSnapshot) && canManageWorkflow && workflow?.status === "draft";
+  const canGenerateGraph =
+    canManageWorkflow && workflow?.status === "draft" && !selectedInstance && aiPrompt.trim().length >= 8;
   const copySelectedSnapshotToDraft = useCallback(() => {
     if (!selectedInstance || !hasInstanceGraphSnapshot) {
       return;
@@ -264,6 +291,68 @@ export function WorkflowDetailPage() {
             canManageWorkflow={canManageWorkflow}
           />
 
+          {canManageWorkflow && workflow.status === "draft" && !selectedInstance ? (
+            <section className="list-panel ai-panel">
+              <div className="ai-panel__header">
+                <div>
+                  <p className="eyebrow">AI assistant</p>
+                  <h3>Draft a workflow graph</h3>
+                  <span>Describe the process, then review and save the generated graph below.</span>
+                </div>
+                {aiDraft ? <span className="pill">Previewing draft</span> : null}
+              </div>
+              <label className="ai-prompt-field">
+                <span>What should this workflow do?</span>
+                <textarea
+                  value={aiPrompt}
+                  rows={4}
+                  placeholder="Example: If amount is over 1000, ask an admin to approve. Approved requests wait 30 minutes, then complete. Rejected requests end as rejected."
+                  onChange={(event) => setAiPrompt(event.target.value)}
+                />
+              </label>
+              <div className="button-group">
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  disabled={!canGenerateGraph || generateGraphMutation.isPending}
+                  onClick={() => generateGraphMutation.mutate()}
+                >
+                  {generateGraphMutation.isPending ? "Generating..." : "Generate graph"}
+                </button>
+                {aiDraft ? (
+                  <button className="button button--ghost" type="button" onClick={() => setAiDraft(null)}>
+                    Discard AI draft
+                  </button>
+                ) : null}
+              </div>
+              {generateGraphMutation.isError ? (
+                <p className="form-error">
+                  {errorMessage(generateGraphMutation.error, "AI could not generate a workflow graph.")}
+                </p>
+              ) : null}
+              {generateGraphMutation.data && !generateGraphMutation.data.accepted ? (
+                <div className="ai-result ai-result--warning">
+                  <div>
+                    <strong className="ai-result__title">AI could not draft that exactly</strong>
+                    <p>{generateGraphMutation.data.explanation}</p>
+                  </div>
+                  <p>No graph was changed. Adjust the prompt and try again.</p>
+                </div>
+              ) : null}
+              {aiDraft ? (
+                <div className={aiDraft.validation.is_valid ? "ai-result ai-result--success" : "ai-result ai-result--warning"}>
+                  <div>
+                    <strong className="ai-result__title">
+                      {aiDraft.validation.is_valid ? "AI draft generated" : "AI draft needs fixes"}
+                    </strong>
+                    <p>{aiDraft.explanation}</p>
+                  </div>
+                  <p>Review the graph below, edit if needed, then use <strong>Save graph</strong>.</p>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
           {hasUnsavedGraphChanges ? (
             <p className="warning-panel">Save the graph before activating or starting an instance.</p>
           ) : null}
@@ -333,7 +422,13 @@ export function WorkflowDetailPage() {
           ) : null}
 
           <WorkflowGraphEditor
-            key={selectedInstance ? `instance-${selectedInstance.id}` : `workflow-${workflow.id}-${workflow.revision}`}
+            key={
+              selectedInstance
+                ? `instance-${selectedInstance.id}`
+                : aiDraft
+                  ? `ai-draft-${workflow.id}-${generateGraphMutation.submittedAt}`
+                  : `workflow-${workflow.id}-${workflow.revision}`
+            }
             workflow={displayWorkflow}
             isSaving={saveMutation.isPending}
             onSave={(nodes, edges) => saveMutation.mutate({ nodes, edges })}

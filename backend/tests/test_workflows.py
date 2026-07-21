@@ -7,16 +7,36 @@ from app.api.dependencies import (
     user_repository_dependency,
     workflow_repository_dependency,
 )
+from app.api.routes.workflows import workflow_ai_service
 from app.domain.auth.repository import UserRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
 from app.domain.workflows.repository import WorkflowRepository
 from app.main import create_app
+from app.models.workflow import Workflow, WorkflowEdge, WorkflowNode
+from app.schemas.workflow import WorkflowAIGenerateResponse, WorkflowValidationResult
 from tests.fakes import (
     InMemoryOrganizationMemberRepository,
     InMemoryOrganizationRepository,
     InMemoryUserRepository,
     InMemoryWorkflowRepository,
 )
+
+
+class FakeWorkflowAIService:
+    async def generate_graph(self, workflow: Workflow, prompt: str) -> WorkflowAIGenerateResponse:
+        nodes = [
+            WorkflowNode(id="start-1", type="start", position={"x": 0, "y": 0}, data={"label": "Start"}),
+            WorkflowNode(id="end-1", type="end", position={"x": 300, "y": 0}, data={"label": "End"}),
+        ]
+        edges = [
+            WorkflowEdge(id="edge-1", source="start-1", target="end-1", label=None, data={}),
+        ]
+        return WorkflowAIGenerateResponse(
+            nodes=nodes,
+            edges=edges,
+            explanation=f"Generated from: {prompt}",
+            validation=WorkflowValidationResult(is_valid=True),
+        )
 
 
 @pytest.fixture
@@ -43,6 +63,7 @@ def client() -> TestClient:
     app.dependency_overrides[organization_repository_dependency] = override_organization_repository
     app.dependency_overrides[organization_member_repository_dependency] = override_member_repository
     app.dependency_overrides[workflow_repository_dependency] = override_workflow_repository
+    app.dependency_overrides[workflow_ai_service] = lambda: FakeWorkflowAIService()
     return TestClient(app)
 
 
@@ -479,6 +500,29 @@ def test_validate_draft_uses_unsaved_graph(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json()["is_valid"] is False
     assert any(error["code"] == "start_outgoing_count" for error in response.json()["errors"])
+
+
+def test_generate_workflow_graph_with_ai(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=workflow_payload(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    workflow = create_response.json()
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow['id']}/ai/generate-graph",
+        json={"prompt": "Create a simple workflow that starts and then completes."},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["nodes"][0]["id"] == "start-1"
+    assert body["edges"][0]["source"] == "start-1"
+    assert body["validation"]["is_valid"] is True
+    assert body["explanation"].startswith("Generated from:")
 
 
 def test_member_can_view_but_not_create_workflow(client: TestClient) -> None:

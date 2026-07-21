@@ -7,7 +7,13 @@ from app.domain.workflows.repository import WorkflowRepository
 from app.domain.workflows.validation import WorkflowValidator
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowStatus
-from app.schemas.workflow import WorkflowCreate, WorkflowRead, WorkflowUpdate, WorkflowValidationResult
+from app.schemas.workflow import (
+    WorkflowAIGenerateResponse,
+    WorkflowCreate,
+    WorkflowRead,
+    WorkflowUpdate,
+    WorkflowValidationResult,
+)
 
 
 class WorkflowNotFoundError(Exception):
@@ -114,6 +120,21 @@ class WorkflowService:
             }
         )
         return WorkflowValidator().validate(draft)
+
+    async def generate_ai_graph(
+        self,
+        organization_id: str,
+        workflow_id: str,
+        prompt: str,
+        user: User,
+        ai_service,
+    ) -> WorkflowAIGenerateResponse:
+        await self._ensure_workflow_manager(organization_id, user)
+        workflow = await self._get_for_organization(organization_id, workflow_id, user)
+        if workflow.status != WorkflowStatus.DRAFT:
+            raise WorkflowRevisionConflictError
+
+        return await ai_service.generate_graph(workflow, prompt)
 
     async def activate(self, organization_id: str, workflow_id: str, user: User) -> WorkflowRead:
         await self._ensure_workflow_manager(organization_id, user)

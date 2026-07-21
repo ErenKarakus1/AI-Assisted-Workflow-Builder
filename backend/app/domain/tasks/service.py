@@ -72,7 +72,9 @@ class TaskService:
         if task.assigned_user_id and task.assigned_user_id != user.id:
             raise TaskUnauthorizedError
         membership = await self.members.get_by_user_and_org(user.id, organization_id)
-        if task.assigned_role and (not membership or membership.role != task.assigned_role):
+        if task.assigned_role and (
+            not membership or not self._role_assignment_matches(task.assigned_role, membership.role)
+        ):
             raise TaskUnauthorizedError
         if task.status != TaskStatus.PENDING or task.revision != revision:
             raise TaskConflictError
@@ -135,8 +137,15 @@ class TaskService:
         if task.assigned_user_id:
             return task.assigned_user_id == user_id
         if task.assigned_role:
-            return task.assigned_role == role
+            return self._role_assignment_matches(task.assigned_role, role)
         return False
+
+    def _role_assignment_matches(self, assigned_role: str, role: OrganizationRole) -> bool:
+        if assigned_role == "all":
+            return True
+        if assigned_role == "owner_or_admin":
+            return role in {OrganizationRole.OWNER, OrganizationRole.ADMIN}
+        return assigned_role == role
 
     def _read(self, task: Task) -> TaskRead:
         return TaskRead(

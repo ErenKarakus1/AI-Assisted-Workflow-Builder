@@ -1,5 +1,11 @@
 import { apiRequest } from "./client";
-import type { Workflow, WorkflowEdge, WorkflowNode, WorkflowValidationResult } from "../types/api";
+import type {
+  Workflow,
+  WorkflowAIGenerateResult,
+  WorkflowEdge,
+  WorkflowNode,
+  WorkflowValidationResult,
+} from "../types/api";
 
 export function listWorkflows(organizationId: string): Promise<Workflow[]> {
   return apiRequest<Workflow[]>(`/api/orgs/${organizationId}/workflows`);
@@ -50,6 +56,20 @@ export function validateWorkflowDraft(
         edges: workflow.edges,
         revision: workflow.revision,
       }),
+    },
+  );
+}
+
+export function generateWorkflowGraph(
+  organizationId: string,
+  workflowId: string,
+  prompt: string,
+): Promise<WorkflowAIGenerateResult> {
+  return apiRequest<WorkflowAIGenerateResult>(
+    `/api/orgs/${organizationId}/workflows/${workflowId}/ai/generate-graph`,
+    {
+      method: "POST",
+      body: JSON.stringify({ prompt }),
     },
   );
 }

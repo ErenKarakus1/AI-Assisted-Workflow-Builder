@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -48,7 +48,13 @@ const conditionOperators = [
   { value: "less_than_or_equal", label: "Less than or equal to" },
   { value: "contains", label: "Contains" },
 ];
-const approvalRoles = ["owner", "admin", "member"];
+const approvalRoles = [
+  { value: "owner", label: "Owner" },
+  { value: "admin", label: "Admin" },
+  { value: "member", label: "Member" },
+  { value: "owner_or_admin", label: "Owner or Admin" },
+  { value: "all", label: "Anyone in the org" },
+];
 
 export function WorkflowGraphEditor({
   workflow,
@@ -73,13 +79,18 @@ export function WorkflowGraphEditor({
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const onDirtyChangeRef = useRef(onDirtyChange);
+
+  useEffect(() => {
+    onDirtyChangeRef.current = onDirtyChange;
+  }, [onDirtyChange]);
 
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
-    onDirtyChange(false);
+    onDirtyChangeRef.current(false);
   }, [initialEdges, initialNodes]);
 
   useEffect(() => {
@@ -577,8 +588,8 @@ function ApprovalConfig({
           >
             <option value="">Select role</option>
             {approvalRoles.map((role) => (
-              <option key={role} value={role}>
-                {humanize(role)}
+              <option key={role.value} value={role.value}>
+                {role.label}
               </option>
             ))}
           </select>

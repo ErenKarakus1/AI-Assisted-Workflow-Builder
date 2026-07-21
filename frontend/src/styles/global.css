@@ -331,7 +331,8 @@ p {
 }
 
 .role-pill,
-.count-pill {
+.count-pill,
+.pill {
   border-radius: 999px;
   background: #edf3f8;
   color: #384b63;
@@ -744,6 +745,10 @@ textarea {
 }
 
 .panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   border-bottom: 1px solid #edf1f6;
   color: #344054;
   font-weight: 800;
@@ -791,6 +796,30 @@ textarea {
 .connection-row {
   display: grid;
   gap: 8px;
+}
+
+.dashboard-panel-grid {
+  align-items: stretch;
+}
+
+.dashboard-panel-grid > .list-panel {
+  grid-template-rows: auto 1fr;
+}
+
+.dashboard-empty-state {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  min-height: 216px;
+  padding: 32px 28px 40px;
+  color: #667085;
+  text-align: center;
+}
+
+.dashboard-empty-state strong {
+  color: #344054;
+  font-size: 1rem;
 }
 
 .instance-panels .list-panel {
@@ -856,6 +885,72 @@ textarea {
 .error-panel ul {
   margin: 10px 0 0;
   padding-left: 20px;
+}
+
+.ai-panel {
+  display: grid;
+  gap: 16px;
+  overflow: visible;
+  border-color: #cfdff4;
+  background:
+    radial-gradient(circle at top left, rgb(36 107 95 / 10%), transparent 32%),
+    #ffffff;
+  padding: 18px;
+}
+
+.ai-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ai-panel__header h3 {
+  margin: 2px 0 4px;
+  color: #172033;
+}
+
+.ai-panel__header span {
+  color: #667085;
+  font-weight: 500;
+}
+
+.ai-prompt-field {
+  gap: 9px;
+}
+
+.ai-prompt-field textarea {
+  min-height: 112px;
+  border-color: #b9c8dc;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 5%);
+}
+
+.ai-result {
+  display: grid;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.ai-result--success {
+  border: 1px solid #a6d8c9;
+  background: #f0faf6;
+  color: #17604f;
+}
+
+.ai-result--warning {
+  border: 1px solid #fedf89;
+  background: #fffaeb;
+  color: #93370d;
+}
+
+.ai-result p {
+  margin: 0;
+}
+
+.ai-result__title {
+  display: block;
+  margin-bottom: 4px;
 }
 
 code {

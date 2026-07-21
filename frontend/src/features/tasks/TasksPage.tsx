@@ -322,10 +322,10 @@ function assignmentLabel(
     return `Assigned to ${assignedMember ? memberLabel(assignedMember) : `user ${shortId(task.assigned_user_id)}`}`;
   }
   if (task.assigned_role) {
-    if (task.assigned_role === currentRole) {
-      return `Assigned to your ${humanize(task.assigned_role)} role`;
+    if (roleAssignmentMatches(task.assigned_role, currentRole)) {
+      return `Assigned to your ${approvalRoleLabel(task.assigned_role)} group`;
     }
-    return `Assigned to ${humanize(task.assigned_role)} role`;
+    return `Assigned to ${approvalRoleLabel(task.assigned_role)}`;
   }
   return "Unassigned";
 }
@@ -338,9 +338,32 @@ function isTaskActionable(task: Task, userId: string | undefined, role: string |
     return task.assigned_user_id === userId;
   }
   if (task.assigned_role) {
-    return task.assigned_role === role;
+    return roleAssignmentMatches(task.assigned_role, role);
   }
   return false;
+}
+
+function roleAssignmentMatches(assignedRole: string, role: string | undefined): boolean {
+  if (!role) {
+    return false;
+  }
+  if (assignedRole === "all") {
+    return true;
+  }
+  if (assignedRole === "owner_or_admin") {
+    return role === "owner" || role === "admin";
+  }
+  return assignedRole === role;
+}
+
+function approvalRoleLabel(role: string): string {
+  if (role === "owner_or_admin") {
+    return "Owner or Admin";
+  }
+  if (role === "all") {
+    return "Anyone in the org";
+  }
+  return `${humanize(role)} role`;
 }
 
 function memberLabel(member: OrganizationMember): string {

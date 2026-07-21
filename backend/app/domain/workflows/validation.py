@@ -6,7 +6,7 @@ from app.schemas.workflow import WorkflowValidationIssue, WorkflowValidationResu
 SUPPORTED_NODE_TYPES = {"start", "approval", "condition", "delay", "end"}
 CONDITION_BRANCHES = {"true", "false"}
 APPROVAL_OUTCOMES = {"approve", "reject"}
-SUPPORTED_APPROVAL_ROLES = {"owner", "admin", "member"}
+SUPPORTED_APPROVAL_ROLES = {"owner", "admin", "member", "owner_or_admin", "all"}
 SUPPORTED_CONDITION_OPERATORS = {
     "equals",
     "not_equals",
@@ -320,7 +320,7 @@ class WorkflowValidator:
                 errors.append(
                     WorkflowValidationIssue(
                         code="approval_role_unsupported",
-                        message="Approval role must be owner, admin, or member",
+                        message="Approval role must be owner, admin, member, owner/admin, or all",
                         node_id=node.id,
                     )
                 )

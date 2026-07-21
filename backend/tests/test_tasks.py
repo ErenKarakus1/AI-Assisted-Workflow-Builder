@@ -267,6 +267,80 @@ def test_task_assigned_to_another_user_is_forbidden(client: TestClient) -> None:
     assert response.status_code == 403
 
 
+def test_owner_or_admin_role_task_can_be_approved_by_admin(client: TestClient) -> None:
+    owner_token, org_id, _ = register_login_create_org(client, "owner@example.com")
+    client.post(
+        "/api/auth/register",
+        json={
+            "email": "admin@example.com",
+            "password": "correct-horse-battery",
+            "full_name": "Admin User",
+        },
+    )
+    admin_login = client.post(
+        "/api/auth/login",
+        json={"email": "admin@example.com", "password": "correct-horse-battery"},
+    )
+    client.post(
+        f"/api/orgs/{org_id}/members",
+        json={"email": "admin@example.com", "role": "admin"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    create_activate_start(client, owner_token, org_id, approval_workflow_payload(assigned_role="owner_or_admin"))
+
+    tasks_response = client.get(
+        f"/api/orgs/{org_id}/tasks",
+        headers={"Authorization": f"Bearer {admin_login.json()['access_token']}"},
+    )
+    task = tasks_response.json()[0]
+    response = client.post(
+        f"/api/orgs/{org_id}/tasks/{task['id']}/approve",
+        json={"revision": task["revision"]},
+        headers={"Authorization": f"Bearer {admin_login.json()['access_token']}"},
+    )
+
+    assert tasks_response.status_code == 200
+    assert response.status_code == 200
+    assert response.json()["decision"] == "approve"
+
+
+def test_all_role_task_can_be_approved_by_member(client: TestClient) -> None:
+    owner_token, org_id, _ = register_login_create_org(client, "owner@example.com")
+    client.post(
+        "/api/auth/register",
+        json={
+            "email": "member@example.com",
+            "password": "correct-horse-battery",
+            "full_name": "Member User",
+        },
+    )
+    member_login = client.post(
+        "/api/auth/login",
+        json={"email": "member@example.com", "password": "correct-horse-battery"},
+    )
+    client.post(
+        f"/api/orgs/{org_id}/members",
+        json={"email": "member@example.com", "role": "member"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    create_activate_start(client, owner_token, org_id, approval_workflow_payload(assigned_role="all"))
+
+    tasks_response = client.get(
+        f"/api/orgs/{org_id}/tasks",
+        headers={"Authorization": f"Bearer {member_login.json()['access_token']}"},
+    )
+    task = tasks_response.json()[0]
+    response = client.post(
+        f"/api/orgs/{org_id}/tasks/{task['id']}/approve",
+        json={"revision": task["revision"]},
+        headers={"Authorization": f"Bearer {member_login.json()['access_token']}"},
+    )
+
+    assert tasks_response.status_code == 200
+    assert response.status_code == 200
+    assert response.json()["decision"] == "approve"
+
+
 def test_member_task_list_only_shows_matching_user_or_role_tasks(client: TestClient) -> None:
     owner_token, org_id, owner_id = register_login_create_org(client, "owner@example.com")
     member_register = client.post(

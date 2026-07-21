@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     mongodb_database: str = "workflow_builder"
     redis_url: str = "redis://localhost:6379/0"
 
+    openai_api_key: str = ""
+    openai_model: str = "gpt-5.4-nano"
+
     jwt_secret_key: str = "change-me-in-production-with-a-long-random-secret"
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 15

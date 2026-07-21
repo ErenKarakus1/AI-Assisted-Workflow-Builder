@@ -37,3 +37,15 @@ class WorkflowValidationResult(BaseModel):
     is_valid: bool
     errors: list[WorkflowValidationIssue] = Field(default_factory=list)
     warnings: list[WorkflowValidationIssue] = Field(default_factory=list)
+
+
+class WorkflowAIGenerateRequest(BaseModel):
+    prompt: str = Field(min_length=8, max_length=2000)
+
+
+class WorkflowAIGenerateResponse(BaseModel):
+    accepted: bool = True
+    nodes: list[WorkflowNode]
+    edges: list[WorkflowEdge]
+    explanation: str
+    validation: WorkflowValidationResult
