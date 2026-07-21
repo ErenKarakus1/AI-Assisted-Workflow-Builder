@@ -5,13 +5,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat)
-![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=flat)
-![React](https://img.shields.io/badge/React-18-61DAFB?style=flat)
+![Python](https://img.shields.io/badge/Python-backend-3776AB?style=flat)
+![React](https://img.shields.io/badge/React-frontend-61DAFB?style=flat)
 ![TypeScript](https://img.shields.io/badge/TypeScript-frontend-3178C6?style=flat)
-![MongoDB](https://img.shields.io/badge/MongoDB-7-47A248?style=flat)
-![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat)
-![Docker](https://img.shields.io/badge/Docker-supported-2496ED?style=flat)
-![OpenAI](https://img.shields.io/badge/OpenAI-optional%20AI%20integration-412991?style=flat)
+![MongoDB](https://img.shields.io/badge/MongoDB-database-47A248?style=flat)
+![Redis](https://img.shields.io/badge/Redis-caching%20%26%20rate%20limiting-DC382D?style=flat)
+![Docker](https://img.shields.io/badge/Docker-infrastructure-2496ED?style=flat)
+![OpenAI](https://img.shields.io/badge/OpenAI-AI%20integration-412991?style=flat)
 
 A full-stack visual workflow automation platform for organization-based approval processes.
 
