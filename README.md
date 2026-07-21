@@ -23,18 +23,40 @@ A visual workflow builder for organization-based approval processes. Users can c
 
 ```mermaid
 flowchart LR
-  User[User] --> Web[React frontend<br/>nginx container]
-  Web --> API[FastAPI backend]
+    User[User] --> Nginx[React Frontend<br/>Nginx Container]
 
-  API --> Mongo[(MongoDB<br/>workflows, orgs, tasks, runs, events)]
-  API --> Redis[(Redis<br/>rate limiting)]
-  API --> OpenAI[OpenAI API<br/>optional AI drafting/analysis]
+    Nginx -->|API Request| API[FastAPI Backend]
 
-  API --> Engine[Workflow engine]
-  Engine --> Tasks[Approval tasks]
-  Engine --> Runs[Workflow instances]
-  Engine --> Events[Event timeline]
-  Engine --> Delays[Delay scheduling]
+    subgraph Backend[FastAPI Application]
+        API --> RateLimit[Rate-Limiting Middleware]
+
+        RateLimit -->|Allowed| Auth[Authentication & RBAC]
+        RateLimit -->|Allowed| Workflows[Workflow Service]
+        RateLimit -->|Allowed| Tasks[Task Service]
+        RateLimit -->|Allowed| Instances[Instance Service]
+        RateLimit -->|Allowed| AIService[AI Analysis Service]
+
+        Workflows --> Validator[Workflow Validator]
+        Instances --> Engine[Workflow Engine]
+        Tasks --> Engine
+
+        Engine --> Events[Event Timeline Service]
+        Engine --> Scheduler[Delay Scheduler]
+        Scheduler -->|Claim Due Jobs| Mongo
+        Scheduler -->|Resume Delayed Workflows| Engine
+    end
+
+    RateLimit <--> Redis[(Redis<br/>Rate-Limit Counters)]
+
+    Auth --> Mongo[(MongoDB<br/>Users, Organizations, Workflows,<br/>Instances, Tasks, Events, Scheduled Jobs)]
+    Workflows --> Mongo
+    Tasks --> Mongo
+    Instances --> Mongo
+    Engine --> Mongo
+    Events --> Mongo
+
+    AIService -->|Normalized Workflow Data| OpenAI[OpenAI API]
+    OpenAI -->|Drafting & Analysis| AIService
 ```
 
 ## Project Structure
