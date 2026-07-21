@@ -1,6 +1,7 @@
 import { apiRequest } from "./client";
 import type {
   Workflow,
+  WorkflowAIAnalyzeResult,
   WorkflowAIGenerateResult,
   WorkflowEdge,
   WorkflowNode,
@@ -70,6 +71,24 @@ export function generateWorkflowGraph(
     {
       method: "POST",
       body: JSON.stringify({ prompt }),
+    },
+  );
+}
+
+export function analyzeWorkflowGraph(
+  organizationId: string,
+  workflowId: string,
+  workflow: Workflow,
+): Promise<WorkflowAIAnalyzeResult> {
+  return apiRequest<WorkflowAIAnalyzeResult>(
+    `/api/orgs/${organizationId}/workflows/${workflowId}/ai/analyze-graph`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        nodes: workflow.nodes,
+        edges: workflow.edges,
+        revision: workflow.revision,
+      }),
     },
   );
 }

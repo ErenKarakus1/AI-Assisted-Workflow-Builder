@@ -13,7 +13,7 @@ from app.domain.orgs.repository import OrganizationMemberRepository, Organizatio
 from app.domain.workflows.repository import WorkflowRepository
 from app.main import create_app
 from app.models.workflow import Workflow, WorkflowEdge, WorkflowNode
-from app.schemas.workflow import WorkflowAIGenerateResponse, WorkflowValidationResult
+from app.schemas.workflow import WorkflowAIAnalyzeResponse, WorkflowAIGenerateResponse, WorkflowValidationResult
 from tests.fakes import (
     InMemoryOrganizationMemberRepository,
     InMemoryOrganizationRepository,
@@ -35,6 +35,15 @@ class FakeWorkflowAIService:
             nodes=nodes,
             edges=edges,
             explanation=f"Generated from: {prompt}",
+            validation=WorkflowValidationResult(is_valid=True),
+        )
+
+    async def analyze_graph(self, workflow: Workflow, nodes, edges) -> WorkflowAIAnalyzeResponse:
+        return WorkflowAIAnalyzeResponse(
+            summary=f"{workflow.name} has {len(nodes)} nodes.",
+            paths=["Start to end"],
+            issues=[],
+            suggestions=["Add labels to important nodes."],
             validation=WorkflowValidationResult(is_valid=True),
         )
 
@@ -523,6 +532,32 @@ def test_generate_workflow_graph_with_ai(client: TestClient) -> None:
     assert body["edges"][0]["source"] == "start-1"
     assert body["validation"]["is_valid"] is True
     assert body["explanation"].startswith("Generated from:")
+
+
+def test_analyze_workflow_graph_with_ai(client: TestClient) -> None:
+    token, org_id = register_login_create_org(client, "owner@example.com", "Owner Org")
+    create_response = client.post(
+        f"/api/orgs/{org_id}/workflows",
+        json=workflow_payload(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    workflow = create_response.json()
+
+    response = client.post(
+        f"/api/orgs/{org_id}/workflows/{workflow['id']}/ai/analyze-graph",
+        json={
+            "nodes": workflow["nodes"],
+            "edges": workflow["edges"],
+            "revision": workflow["revision"],
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["summary"] == "Employee Onboarding has 2 nodes."
+    assert body["paths"] == ["Start to end"]
+    assert body["validation"]["is_valid"] is True
 
 
 def test_member_can_view_but_not_create_workflow(client: TestClient) -> None:

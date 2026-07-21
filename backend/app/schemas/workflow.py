@@ -49,3 +49,17 @@ class WorkflowAIGenerateResponse(BaseModel):
     edges: list[WorkflowEdge]
     explanation: str
     validation: WorkflowValidationResult
+
+
+class WorkflowAIAnalyzeRequest(BaseModel):
+    nodes: list[WorkflowNode]
+    edges: list[WorkflowEdge]
+    revision: int = Field(ge=1)
+
+
+class WorkflowAIAnalyzeResponse(BaseModel):
+    summary: str
+    paths: list[str] = Field(default_factory=list)
+    issues: list[str] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
+    validation: WorkflowValidationResult

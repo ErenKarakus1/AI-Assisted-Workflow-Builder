@@ -8,6 +8,7 @@ from app.domain.workflows.validation import WorkflowValidator
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowStatus
 from app.schemas.workflow import (
+    WorkflowAIAnalyzeResponse,
     WorkflowAIGenerateResponse,
     WorkflowCreate,
     WorkflowRead,
@@ -135,6 +136,21 @@ class WorkflowService:
             raise WorkflowRevisionConflictError
 
         return await ai_service.generate_graph(workflow, prompt)
+
+    async def analyze_ai_graph(
+        self,
+        organization_id: str,
+        workflow_id: str,
+        payload: WorkflowUpdate,
+        user: User,
+        ai_service,
+    ) -> WorkflowAIAnalyzeResponse:
+        await self._ensure_membership(organization_id, user)
+        workflow = await self._get_for_organization(organization_id, workflow_id, user)
+        if workflow.revision != payload.revision:
+            raise WorkflowRevisionConflictError
+
+        return await ai_service.analyze_graph(workflow, payload.nodes, payload.edges)
 
     async def activate(self, organization_id: str, workflow_id: str, user: User) -> WorkflowRead:
         await self._ensure_workflow_manager(organization_id, user)

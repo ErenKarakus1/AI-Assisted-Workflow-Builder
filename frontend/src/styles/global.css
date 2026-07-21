@@ -953,6 +953,37 @@ textarea {
   margin-bottom: 4px;
 }
 
+.ai-analysis {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #d8d5ff;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #344054;
+  padding: 14px 16px;
+}
+
+.ai-analysis p {
+  margin: 0;
+}
+
+.ai-analysis__section {
+  display: grid;
+  gap: 6px;
+}
+
+.ai-analysis__section span {
+  color: #526173;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ai-analysis__section ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
 code {
   color: #667085;
   font-size: 0.78rem;

@@ -19,6 +19,8 @@ from app.domain.workflows.service import (
 )
 from app.models.user import User
 from app.schemas.workflow import (
+    WorkflowAIAnalyzeRequest,
+    WorkflowAIAnalyzeResponse,
     WorkflowAIGenerateRequest,
     WorkflowAIGenerateResponse,
     WorkflowCreate,
@@ -143,6 +145,38 @@ async def generate_workflow_graph(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AI could not generate a workflow graph",
+        ) from exc
+
+
+@router.post("/{workflow_id}/ai/analyze-graph", response_model=WorkflowAIAnalyzeResponse)
+async def analyze_workflow_graph(
+    organization_id: str,
+    workflow_id: str,
+    payload: WorkflowAIAnalyzeRequest,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+    ai_service: Annotated[WorkflowAIService, Depends(workflow_ai_service)],
+) -> WorkflowAIAnalyzeResponse:
+    try:
+        return await service.analyze_ai_graph(
+            organization_id,
+            workflow_id,
+            WorkflowUpdate(name="Analysis draft", nodes=payload.nodes, edges=payload.edges, revision=payload.revision),
+            current_user,
+            ai_service,
+        )
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
+    except WorkflowRevisionConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Workflow revision conflict") from exc
+    except AIConfigurationError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI is not configured") from exc
+    except AIGenerationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="AI could not analyze the workflow graph",
         ) from exc
 
 

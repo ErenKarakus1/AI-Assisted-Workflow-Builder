@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, ValidationError
 from app.core.config import settings
 from app.domain.workflows.validation import WorkflowValidator
 from app.models.workflow import Workflow, WorkflowEdge, WorkflowNode
-from app.schemas.workflow import WorkflowAIGenerateResponse
+from app.schemas.workflow import WorkflowAIAnalyzeResponse, WorkflowAIGenerateResponse
 
 
 class AIConfigurationError(Exception):
@@ -22,6 +22,13 @@ class GeneratedWorkflowGraph(BaseModel):
     nodes: list[WorkflowNode] = Field(default_factory=list)
     edges: list[WorkflowEdge] = Field(default_factory=list)
     explanation: str = Field(min_length=1, max_length=1000)
+
+
+class AnalyzedWorkflowGraph(BaseModel):
+    summary: str = Field(min_length=1, max_length=1000)
+    paths: list[str] = Field(default_factory=list, max_length=8)
+    issues: list[str] = Field(default_factory=list, max_length=8)
+    suggestions: list[str] = Field(default_factory=list, max_length=8)
 
 
 class WorkflowAIService:
@@ -92,6 +99,62 @@ class WorkflowAIService:
             validation=validation,
         )
 
+    async def analyze_graph(
+        self,
+        workflow: Workflow,
+        nodes: list[WorkflowNode],
+        edges: list[WorkflowEdge],
+    ) -> WorkflowAIAnalyzeResponse:
+        if not settings.openai_api_key:
+            raise AIConfigurationError
+
+        draft = workflow.model_copy(update={"nodes": nodes, "edges": edges})
+        validation = WorkflowValidator().validate(draft)
+        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        try:
+            response = await client.responses.create(
+                model=settings.openai_model,
+                input=[
+                    {"role": "system", "content": [{"type": "input_text", "text": analyze_prompt()}]},
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_text",
+                                "text": json.dumps(
+                                    {
+                                        "workflow_name": workflow.name,
+                                        "nodes": [node.model_dump() for node in nodes],
+                                        "edges": [edge.model_dump() for edge in edges],
+                                        "validation": validation.model_dump(),
+                                    }
+                                ),
+                            }
+                        ],
+                    },
+                ],
+                text={"format": {"type": "json_object"}},
+            )
+        except OpenAIError as exc:
+            raise AIGenerationError from exc
+
+        content = response.output_text
+        if not content:
+            raise AIGenerationError
+
+        try:
+            analysis = AnalyzedWorkflowGraph.model_validate_json(content)
+        except (ValidationError, ValueError) as exc:
+            raise AIGenerationError from exc
+
+        return WorkflowAIAnalyzeResponse(
+            summary=analysis.summary,
+            paths=analysis.paths,
+            issues=analysis.issues,
+            suggestions=analysis.suggestions,
+            validation=validation,
+        )
+
 
 def system_prompt() -> str:
     return """
@@ -123,4 +186,18 @@ Graph rules:
 - Keep graphs small and understandable.
 - Prefer a valid graph over a clever graph.
 - For a request like "start with owner approval; if owner approves, accept; if owner rejects, check amount >= 15000; if false reject; if true ask admin approval; if approved accept; if rejected reject", generate exactly that chain.
+""".strip()
+
+
+def analyze_prompt() -> str:
+    return """
+You explain workflow graphs for an AI-assisted workflow builder.
+Return JSON only with keys: summary, paths, issues, suggestions.
+
+Explain what the workflow does in plain language.
+List the main possible paths through the graph.
+Use validation errors/warnings when identifying issues.
+Keep suggestions practical and specific to the supported node types.
+Do not suggest unsupported approval role combinations.
+Supported approval roles are owner, admin, member, owner_or_admin, and all.
 """.strip()

@@ -73,6 +73,14 @@ export type WorkflowAIGenerateResult = {
   validation: WorkflowValidationResult;
 };
 
+export type WorkflowAIAnalyzeResult = {
+  summary: string;
+  paths: string[];
+  issues: string[];
+  suggestions: string[];
+  validation: WorkflowValidationResult;
+};
+
 export type TaskStatus = "pending" | "completed";
 
 export type TaskDecision = "approve" | "reject";

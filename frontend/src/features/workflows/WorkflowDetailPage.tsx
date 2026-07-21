@@ -6,6 +6,7 @@ import { listInstanceEvents, listWorkflowInstances, startWorkflowInstance } from
 import { listOrganizationMembers, listOrganizations } from "../../api/organizations";
 import {
   activateWorkflow,
+  analyzeWorkflowGraph,
   deactivateWorkflow,
   deleteWorkflow,
   generateWorkflowGraph,
@@ -17,6 +18,7 @@ import {
 import { errorMessage } from "../../lib/errors";
 import type {
   InstanceEvent,
+  WorkflowAIAnalyzeResult,
   WorkflowAIGenerateResult,
   WorkflowEdge,
   WorkflowInstance,
@@ -114,6 +116,14 @@ export function WorkflowDetailPage() {
       setAiDraft(result.accepted ? result : null);
       validateDraftMutation.reset();
       validateMutation.reset();
+    },
+  });
+  const analyzeGraphMutation = useMutation({
+    mutationFn: () => {
+      if (!displayWorkflow) {
+        throw new Error("Workflow is not loaded");
+      }
+      return analyzeWorkflowGraph(organizationId, workflowId, displayWorkflow);
     },
   });
   const startInstanceMutation = useMutation({
@@ -319,6 +329,14 @@ export function WorkflowDetailPage() {
                 >
                   {generateGraphMutation.isPending ? "Generating..." : "Generate graph"}
                 </button>
+                <button
+                  className="button button--ghost"
+                  type="button"
+                  disabled={analyzeGraphMutation.isPending}
+                  onClick={() => analyzeGraphMutation.mutate()}
+                >
+                  {analyzeGraphMutation.isPending ? "Analyzing..." : "Analyze current graph"}
+                </button>
                 {aiDraft ? (
                   <button className="button button--ghost" type="button" onClick={() => setAiDraft(null)}>
                     Discard AI draft
@@ -328,6 +346,11 @@ export function WorkflowDetailPage() {
               {generateGraphMutation.isError ? (
                 <p className="form-error">
                   {errorMessage(generateGraphMutation.error, "AI could not generate a workflow graph.")}
+                </p>
+              ) : null}
+              {analyzeGraphMutation.isError ? (
+                <p className="form-error">
+                  {errorMessage(analyzeGraphMutation.error, "AI could not analyze the workflow graph.")}
                 </p>
               ) : null}
               {generateGraphMutation.data && !generateGraphMutation.data.accepted ? (
@@ -350,6 +373,7 @@ export function WorkflowDetailPage() {
                   <p>Review the graph below, edit if needed, then use <strong>Save graph</strong>.</p>
                 </div>
               ) : null}
+              {analyzeGraphMutation.data ? <AIAnalysisPanel result={analyzeGraphMutation.data} /> : null}
             </section>
           ) : null}
 
@@ -692,6 +716,43 @@ function JsonBlock({ title, value }: { title: string; value: Record<string, unkn
     <div className="compact-row">
       <strong>{title}</strong>
       <pre>{JSON.stringify(value, null, 2)}</pre>
+    </div>
+  );
+}
+
+function AIAnalysisPanel({ result }: { result: WorkflowAIAnalyzeResult }) {
+  return (
+    <div className="ai-analysis">
+      <strong className="ai-result__title">Current graph analysis</strong>
+      <p>{result.summary}</p>
+      <AIAnalysisList title="Main paths" items={result.paths} emptyText="No paths described." />
+      <AIAnalysisList title="Issues" items={result.issues} emptyText="No issues found." />
+      <AIAnalysisList title="Suggestions" items={result.suggestions} emptyText="No suggestions right now." />
+    </div>
+  );
+}
+
+function AIAnalysisList({
+  title,
+  items,
+  emptyText,
+}: {
+  title: string;
+  items: string[];
+  emptyText: string;
+}) {
+  return (
+    <div className="ai-analysis__section">
+      <span>{title}</span>
+      {items.length ? (
+        <ul>
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>{emptyText}</p>
+      )}
     </div>
   );
 }
