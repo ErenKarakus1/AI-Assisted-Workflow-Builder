@@ -51,8 +51,7 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 * Paginated workflow runs and approval tasks
 * Backend task search
 * Redis-backed rate limiting
-* Optional AI workflow drafting
-* Optional AI workflow analysis
+* Optional AI-assisted workflow drafting and analysis
 * Dockerized local setup
 * 61 passing backend tests
 
@@ -76,7 +75,7 @@ Each workflow instance stores a snapshot of the graph used when the instance sta
 
 Workflow graphs are validated by deterministic backend logic before activation.
 
-Validation checks include:
+Validation includes checks for:
 
 * Exactly one start node
 * At least one end node
@@ -243,12 +242,12 @@ frontend/
 
 ## Requirements
 
-### Docker setup
+### Docker Setup
 
 * Docker
 * Docker Compose
 
-### Local development
+### Local Development
 
 * Python 3.11 or newer
 * Node.js
@@ -344,13 +343,15 @@ This removes the MongoDB and Redis volumes created by Docker Compose.
 
 ## Environment Configuration
 
+### Backend
+
 The backend environment template is located at:
 
 ```text
 backend/.env.example
 ```
 
-Create your local environment file at:
+Create your local configuration at:
 
 ```text
 backend/.env
@@ -360,7 +361,7 @@ Docker Compose loads `backend/.env` for both the API and scheduler worker.
 
 The Compose configuration overrides `MONGODB_URL` and `REDIS_URL` with Docker service hostnames, allowing the containers to communicate with the `mongo` and `redis` services.
 
-### Application configuration
+#### Application configuration
 
 ```env
 APP_NAME="AI-Assisted Workflow Builder API"
@@ -368,13 +369,13 @@ APP_VERSION="0.1.0"
 ENVIRONMENT="development"
 ```
 
-### CORS configuration
+#### CORS configuration
 
 ```env
 CORS_ORIGINS='["http://localhost:5173","http://127.0.0.1:5173"]'
 ```
 
-### Database configuration
+#### Database configuration
 
 For backend processes running directly on your machine:
 
@@ -391,18 +392,18 @@ mongodb://mongo:27017
 redis://redis:6379/0
 ```
 
-### Rate-limiting configuration
+#### Rate-limiting configuration
 
 ```env
 RATE_LIMIT_ENABLED=false
 RATE_LIMIT_FAIL_OPEN=true
 ```
 
-Docker Compose enables rate limiting for its API and worker environments.
+Docker Compose enables rate limiting for the containerized API and worker environments.
 
 When `RATE_LIMIT_FAIL_OPEN` is enabled, requests are allowed if Redis is temporarily unavailable.
 
-### Scheduler configuration
+#### Scheduler configuration
 
 ```env
 SCHEDULER_POLL_SECONDS=1
@@ -410,7 +411,7 @@ SCHEDULER_POLL_SECONDS=1
 
 This controls how frequently the background worker checks for due scheduled jobs.
 
-### AI configuration
+#### AI configuration
 
 ```env
 OPENAI_API_KEY=""
@@ -419,7 +420,7 @@ OPENAI_MODEL="gpt-5.4-nano"
 
 Leave `OPENAI_API_KEY` empty when AI features are not needed.
 
-### Authentication configuration
+#### Authentication configuration
 
 ```env
 JWT_SECRET_KEY="change-me-in-production-with-a-long-random-secret"
@@ -430,17 +431,23 @@ REFRESH_TOKEN_DAYS=30
 
 The example JWT secret is intended only for local development. Replace it with a long, randomly generated secret for any deployed environment.
 
-### Frontend configuration
+### Frontend
 
-For local frontend development, configure:
+The frontend environment template is located at:
+
+```text
+frontend/.env.example
+```
+
+For local frontend development:
 
 ```env
 VITE_API_BASE_URL="http://localhost:8000"
 ```
 
-Do not commit `backend/.env` or any real API keys, access tokens, passwords, or production secrets.
+Do not commit `backend/.env`, `frontend/.env`, or any real API keys, access tokens, passwords, or production secrets.
 
-Only the `.env.example` templates should be committed.
+Only `.env.example` templates should be committed.
 
 ## Local Development
 
@@ -468,7 +475,7 @@ Windows PowerShell:
 Copy-Item backend/.env.example backend/.env
 ```
 
-The example file already uses host-accessible URLs:
+The example file uses host-accessible URLs:
 
 ```env
 MONGODB_URL="mongodb://localhost:27017"
@@ -560,6 +567,13 @@ cd frontend
 npm run build
 ```
 
+### Production dependency audit
+
+```bash
+cd frontend
+npm audit --omit=dev
+```
+
 ## Testing Automatic Token Refresh
 
 To test automatic access-token renewal:
@@ -567,7 +581,7 @@ To test automatic access-token renewal:
 1. Sign in to the application.
 2. Open the browser developer tools.
 3. Open the Application tab and inspect Local Storage for `http://localhost:5173`.
-4. Confirm that both of these entries exist:
+4. Confirm that both entries exist:
 
    * `workflow_builder_access_token`
    * `workflow_builder_refresh_token`
@@ -616,9 +630,9 @@ AI is isolated from workflow execution and is used only for optional drafting an
 
 ### MongoDB
 
-Workflow graphs contain nested nodes, edges, and configuration objects. MongoDB supports storing these graph definitions and their snapshots without splitting every graph component across many relational tables.
+Workflow graphs contain nested nodes, edges, and configuration objects. MongoDB supports storing these graph definitions and snapshots without splitting every graph component across many relational tables.
 
-Separate collections are used for application entities such as:
+Separate collections are used for:
 
 * Users
 * Organizations
@@ -650,7 +664,7 @@ Frontend visibility rules improve the user experience but do not replace server-
 
 ### Token Refresh
 
-The frontend stores the access and refresh tokens returned during authentication.
+The frontend stores the access and refresh tokens returned during authentication in browser local storage.
 
 When an authenticated API request receives a `401` response, the client uses the refresh token to request a new token pair and retries the original request once.
 
@@ -688,7 +702,7 @@ This prevents the frontend from loading an organization’s complete execution h
 
 ## Security Notes
 
-* Never commit `backend/.env`.
+* Never commit `backend/.env` or `frontend/.env`.
 * Never commit real API keys, passwords, access tokens, or refresh tokens.
 * Replace the example JWT secret before deployment.
 * Use a strong, randomly generated production JWT secret.
