@@ -783,12 +783,6 @@ function stringValue(value: unknown): string {
     : "";
 }
 
-function humanize(value: string): string {
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 function numberValue(value: unknown): number {
   return typeof value === "number" ? value : 0;
 }
