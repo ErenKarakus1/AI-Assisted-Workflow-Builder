@@ -1,12 +1,12 @@
 import { createContext, useContext } from "react";
 
-import type { User } from "../../types/api";
+import type { TokenPair, User } from "../../types/api";
 
 export type AuthContextValue = {
   user: User | undefined;
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: (token: string) => Promise<void>;
+  signIn: (tokens: TokenPair) => Promise<void>;
   signOut: () => void;
 };
 

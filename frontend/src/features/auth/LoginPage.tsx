@@ -14,7 +14,7 @@ export function LoginPage() {
     mutationFn: (values: LoginPayload) =>
       loginUser({ email: values.email.trim().toLowerCase(), password: values.password }),
     onSuccess: async (tokens) => {
-      await signIn(tokens.access_token);
+      await signIn(tokens);
       navigate("/");
     },
   });

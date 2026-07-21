@@ -21,7 +21,7 @@ export function RegisterPage() {
       return loginUser({ email: payload.email, password: payload.password });
     },
     onSuccess: async (tokens) => {
-      await signIn(tokens.access_token);
+      await signIn(tokens);
       navigate("/");
     },
   });

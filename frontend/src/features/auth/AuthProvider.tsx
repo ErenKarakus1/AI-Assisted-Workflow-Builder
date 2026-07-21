@@ -3,15 +3,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getCurrentUser } from "../../api/auth";
 import {
-  clearAccessToken,
+  clearTokens,
   getAccessToken,
-  setAccessToken,
+  getRefreshToken,
+  setTokens,
 } from "../../api/client";
+import type { TokenPair } from "../../types/api";
 import { AuthContext, type AuthContextValue } from "./AuthContext";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
-  const [hasToken, setHasToken] = useState(() => Boolean(getAccessToken()));
+
+  const [hasToken, setHasToken] = useState(
+    () => Boolean(getAccessToken()) || Boolean(getRefreshToken()),
+  );
 
   const userQuery = useQuery({
     queryKey: ["current-user"],
@@ -25,15 +30,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: userQuery.data,
       isAuthenticated: Boolean(userQuery.data && hasToken),
       isLoading: hasToken && userQuery.isLoading,
-      signIn: async (token: string) => {
-        setAccessToken(token);
+      signIn: async (tokens: TokenPair) => {
+        setTokens(tokens);
         setHasToken(true);
+
         await queryClient.invalidateQueries({
           queryKey: ["current-user"],
         });
       },
       signOut: () => {
-        clearAccessToken();
+        clearTokens();
         setHasToken(false);
         queryClient.clear();
       },
