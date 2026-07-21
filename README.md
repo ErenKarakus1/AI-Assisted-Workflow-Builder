@@ -317,30 +317,6 @@ Docker Compose starts:
 * `mongo` — MongoDB database
 * `redis` — Redis rate-limit storage
 
-### View running services
-
-```bash
-docker compose ps
-```
-
-### View API logs
-
-```bash
-docker compose logs -f api
-```
-
-### View worker logs
-
-```bash
-docker compose logs -f worker
-```
-
-### View frontend logs
-
-```bash
-docker compose logs -f web
-```
-
 ### Stop the application
 
 ```bash
@@ -566,73 +542,15 @@ The test suite covers areas including:
 * Rate limiting
 * Health checks
 
-### Frontend linting
+### Frontend checks
 
 ```bash
 cd frontend
 npm install
 npm run lint
-```
-
-### Frontend production build
-
-```bash
-cd frontend
 npm run build
 ```
 
-### Production dependency audit
-
-```bash
-cd frontend
-npm audit --omit=dev
-```
-
-## Testing Automatic Token Refresh
-
-To test automatic access-token renewal:
-
-1. Sign in to the application.
-2. Open the browser developer tools.
-3. Open the Application tab and inspect Local Storage for `http://localhost:5173`.
-4. Confirm that both entries exist:
-
-   * `workflow_builder_access_token`
-   * `workflow_builder_refresh_token`
-5. Replace only the access-token value with an invalid value.
-6. Leave the refresh token unchanged.
-7. Reload a protected page.
-8. Open the Network tab and confirm that `POST /api/auth/refresh` succeeds.
-9. Confirm that the original protected request is retried successfully.
-
-Do not share token values from browser storage or network responses.
-
-## Testing Delayed Workflows
-
-To test delayed execution from end to end:
-
-1. Create a workflow containing `start`, `delay`, and `end` nodes.
-2. Activate the workflow.
-3. Start a workflow instance.
-4. Confirm that the instance enters a waiting state.
-5. Wait for the configured delay.
-6. Confirm that the worker resumes and completes the instance.
-
-To verify that delayed execution depends on the worker, stop it:
-
-```bash
-docker compose stop worker
-```
-
-Start another delayed workflow. The instance should remain waiting after its delay becomes due.
-
-Restart the worker:
-
-```bash
-docker compose start worker
-```
-
-The overdue workflow should then resume.
 
 ## Design Decisions
 
@@ -662,6 +580,12 @@ Each workflow instance stores the graph used when the instance starts.
 
 This allows historical runs to preserve their original execution structure even after the workflow definition changes.
 
+### Backend Authorization
+
+Authorization for workflow management and task decisions is enforced by the backend.
+
+Frontend visibility rules improve the user experience but do not replace server-side permission checks.
+
 ### Persistent Scheduling
 
 Delayed workflow continuations are stored as scheduled jobs in MongoDB.
@@ -669,22 +593,6 @@ Delayed workflow continuations are stored as scheduled jobs in MongoDB.
 This allows waiting workflow instances to remain recoverable across API and worker restarts.
 
 The worker claims due jobs using conditional database updates before processing them.
-
-### Backend Authorization
-
-Authorization for workflow management and task decisions is enforced by the backend.
-
-Frontend visibility rules improve the user experience but do not replace server-side permission checks.
-
-### Token Refresh
-
-The frontend stores the access and refresh tokens returned during authentication in browser local storage.
-
-When an authenticated API request receives a `401` response, the client uses the refresh token to request a new token pair and retries the original request once.
-
-Concurrent failed requests share the same refresh operation to avoid sending multiple refresh requests simultaneously.
-
-If token refresh fails, the stored authentication tokens are cleared and the user must sign in again.
 
 ### Rate Limiting
 
@@ -696,12 +604,6 @@ Redis-backed fixed-window counters protect sensitive or resource-intensive endpo
 * Approval decisions
 * AI requests
 
-### Backend Pagination
-
-Workflow runs and approval tasks are paginated by the backend.
-
-This prevents the frontend from loading an organization’s complete execution history at once.
-
 ## Known Limitations
 
 * AI drafting and analysis are best-effort and may require manual review.
@@ -710,7 +612,6 @@ This prevents the frontend from loading an organization’s complete execution h
 * IP-based rate limiting uses the directly connected client address and requires trusted proxy-header configuration when deployed behind a reverse proxy.
 * Scheduled jobs use MongoDB polling rather than a dedicated message broker.
 * Workflow search is client-side because workflows are loaded per organization.
-* Runs and approval tasks use backend pagination.
 * The Docker Compose setup is intended for local development and demonstration, not hardened production deployment.
 * The frontend currently relies on linting and production-build checks rather than an automated frontend test suite.
 
@@ -735,7 +636,6 @@ This prevents the frontend from loading an organization’s complete execution h
 * Sliding-window or token-bucket rate limiting
 * Message-broker-based delayed job processing
 * Workflow version management
-* Workflow templates
 * Email or webhook notifications
 * Additional workflow node types
 * Production deployment configuration
