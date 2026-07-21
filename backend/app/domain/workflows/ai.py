@@ -32,7 +32,12 @@ class AnalyzedWorkflowGraph(BaseModel):
 
 
 class WorkflowAIService:
-    async def generate_graph(self, workflow: Workflow, prompt: str) -> WorkflowAIGenerateResponse:
+    async def generate_graph(
+        self,
+        workflow: Workflow,
+        prompt: str,
+        use_current_graph: bool = False,
+    ) -> WorkflowAIGenerateResponse:
         if not settings.openai_api_key:
             raise AIConfigurationError
 
@@ -52,6 +57,9 @@ class WorkflowAIService:
                                         "workflow_name": workflow.name,
                                         "current_nodes": [node.model_dump() for node in workflow.nodes],
                                         "current_edges": [edge.model_dump() for edge in workflow.edges],
+                                        "mode": "modify_current_graph"
+                                        if use_current_graph
+                                        else "create_fresh_graph",
                                         "request": prompt,
                                     }
                                 ),
@@ -165,7 +173,9 @@ If the user's request cannot be represented accurately with the supported node t
 {"accepted": false, "nodes": [], "edges": [], "explanation": "Clear reason and what the user can choose instead."}
 Do not generate a graph that intentionally changes a user's explicit approval assignment.
 Do not refuse normal multi-step workflows. Multiple approvals, conditions after approvals, approvals after rejection paths, and several end nodes are supported.
-Ignore existing current_nodes/current_edges unless the user explicitly asks to modify or preserve them; otherwise create a fresh graph for the request.
+Use the user's mode field:
+- mode=create_fresh_graph: ignore current_nodes/current_edges unless the request explicitly asks to preserve something.
+- mode=modify_current_graph: use current_nodes/current_edges as the starting point and change only what the request asks for.
 If wording says "if approved" or "if rejected/if no" near an approval node, interpret that as the approval node's approve/reject edge.
 If wording says "if yes" or "if no" near a condition, interpret that as the condition node's true/false edge.
 Ask for clarification only when there are multiple materially different valid graphs and no reasonable interpretation.

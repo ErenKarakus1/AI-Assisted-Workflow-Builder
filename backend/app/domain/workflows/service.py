@@ -127,6 +127,7 @@ class WorkflowService:
         organization_id: str,
         workflow_id: str,
         prompt: str,
+        use_current_graph: bool,
         user: User,
         ai_service,
     ) -> WorkflowAIGenerateResponse:
@@ -135,7 +136,7 @@ class WorkflowService:
         if workflow.status != WorkflowStatus.DRAFT:
             raise WorkflowRevisionConflictError
 
-        return await ai_service.generate_graph(workflow, prompt)
+        return await ai_service.generate_graph(workflow, prompt, use_current_graph)
 
     async def analyze_ai_graph(
         self,

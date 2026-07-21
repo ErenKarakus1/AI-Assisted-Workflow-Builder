@@ -3,6 +3,7 @@ import type {
   Workflow,
   WorkflowAIAnalyzeResult,
   WorkflowAIGenerateResult,
+  WorkflowAIStatus,
   WorkflowEdge,
   WorkflowNode,
   WorkflowValidationResult,
@@ -65,14 +66,22 @@ export function generateWorkflowGraph(
   organizationId: string,
   workflowId: string,
   prompt: string,
+  useCurrentGraph: boolean,
 ): Promise<WorkflowAIGenerateResult> {
   return apiRequest<WorkflowAIGenerateResult>(
     `/api/orgs/${organizationId}/workflows/${workflowId}/ai/generate-graph`,
     {
       method: "POST",
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, use_current_graph: useCurrentGraph }),
     },
   );
+}
+
+export function getWorkflowAIStatus(
+  organizationId: string,
+  workflowId: string,
+): Promise<WorkflowAIStatus> {
+  return apiRequest<WorkflowAIStatus>(`/api/orgs/${organizationId}/workflows/${workflowId}/ai/status`);
 }
 
 export function analyzeWorkflowGraph(

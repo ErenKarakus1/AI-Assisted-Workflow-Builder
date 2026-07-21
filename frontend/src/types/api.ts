@@ -81,6 +81,11 @@ export type WorkflowAIAnalyzeResult = {
   validation: WorkflowValidationResult;
 };
 
+export type WorkflowAIStatus = {
+  configured: boolean;
+  model: string;
+};
+
 export type TaskStatus = "pending" | "completed";
 
 export type TaskDecision = "approve" | "reject";

@@ -9,6 +9,7 @@ import {
   analyzeWorkflowGraph,
   deactivateWorkflow,
   deleteWorkflow,
+  getWorkflowAIStatus,
   generateWorkflowGraph,
   getWorkflow,
   updateWorkflow,
@@ -37,6 +38,7 @@ export function WorkflowDetailPage() {
   const [hasUnsavedGraphChanges, setHasUnsavedGraphChanges] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiDraft, setAiDraft] = useState<WorkflowAIGenerateResult | null>(null);
+  const [useCurrentGraphForAI, setUseCurrentGraphForAI] = useState(false);
   const workflowQuery = useQuery({
     queryKey: ["workflow", organizationId, workflowId],
     queryFn: () => getWorkflow(organizationId, workflowId),
@@ -55,6 +57,11 @@ export function WorkflowDetailPage() {
   const organizationsQuery = useQuery({
     queryKey: ["organizations"],
     queryFn: listOrganizations,
+  });
+  const aiStatusQuery = useQuery({
+    queryKey: ["workflow-ai-status", organizationId, workflowId],
+    queryFn: () => getWorkflowAIStatus(organizationId, workflowId),
+    enabled: Boolean(organizationId && workflowId),
   });
   const effectiveSelectedInstanceId = selectedInstanceId;
   const eventsQuery = useQuery({
@@ -110,7 +117,7 @@ export function WorkflowDetailPage() {
     },
   });
   const generateGraphMutation = useMutation({
-    mutationFn: () => generateWorkflowGraph(organizationId, workflowId, aiPrompt),
+    mutationFn: () => generateWorkflowGraph(organizationId, workflowId, aiPrompt, useCurrentGraphForAI),
     onSuccess: (result) => {
       setSelectedInstanceId(null);
       setAiDraft(result.accepted ? result : null);
@@ -190,7 +197,11 @@ export function WorkflowDetailPage() {
   const canCopySelectedSnapshot =
     Boolean(selectedInstance && hasInstanceGraphSnapshot) && canManageWorkflow && workflow?.status === "draft";
   const canGenerateGraph =
-    canManageWorkflow && workflow?.status === "draft" && !selectedInstance && aiPrompt.trim().length >= 8;
+    canManageWorkflow &&
+    workflow?.status === "draft" &&
+    !selectedInstance &&
+    aiStatusQuery.data?.configured === true &&
+    aiPrompt.trim().length >= 8;
   const copySelectedSnapshotToDraft = useCallback(() => {
     if (!selectedInstance || !hasInstanceGraphSnapshot) {
       return;
@@ -307,10 +318,20 @@ export function WorkflowDetailPage() {
                 <div>
                   <p className="eyebrow">AI assistant</p>
                   <h3>Draft a workflow graph</h3>
-                  <span>Describe the process, then review and save the generated graph below.</span>
+                  <span>
+                    {useCurrentGraphForAI
+                      ? "Describe changes to make to the current graph."
+                      : "Describe the process, then review and save the generated graph below."}
+                  </span>
                 </div>
                 {aiDraft ? <span className="pill">Previewing draft</span> : null}
               </div>
+              {aiStatusQuery.data?.configured === false ? (
+                <div className="ai-result ai-result--warning">
+                  <strong className="ai-result__title">AI is not configured</strong>
+                  <p>Add <code>OPENAI_API_KEY</code> to <code>backend/.env</code>, then restart the backend.</p>
+                </div>
+              ) : null}
               <label className="ai-prompt-field">
                 <span>What should this workflow do?</span>
                 <textarea
@@ -319,6 +340,14 @@ export function WorkflowDetailPage() {
                   placeholder="Example: If amount is over 1000, ask an admin to approve. Approved requests wait 30 minutes, then complete. Rejected requests end as rejected."
                   onChange={(event) => setAiPrompt(event.target.value)}
                 />
+              </label>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={useCurrentGraphForAI}
+                  onChange={(event) => setUseCurrentGraphForAI(event.target.checked)}
+                />
+                Use current graph as starting point
               </label>
               <div className="button-group">
                 <button

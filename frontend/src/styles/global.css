@@ -462,6 +462,19 @@ textarea {
   flex-wrap: wrap;
 }
 
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+}
+
+.checkbox-row input {
+  min-height: auto;
+  width: 16px;
+  height: 16px;
+}
+
 .field-error {
   color: #b42318;
   font-size: 0.86rem;

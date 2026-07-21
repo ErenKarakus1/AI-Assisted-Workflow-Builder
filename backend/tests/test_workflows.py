@@ -23,7 +23,12 @@ from tests.fakes import (
 
 
 class FakeWorkflowAIService:
-    async def generate_graph(self, workflow: Workflow, prompt: str) -> WorkflowAIGenerateResponse:
+    async def generate_graph(
+        self,
+        workflow: Workflow,
+        prompt: str,
+        use_current_graph: bool = False,
+    ) -> WorkflowAIGenerateResponse:
         nodes = [
             WorkflowNode(id="start-1", type="start", position={"x": 0, "y": 0}, data={"label": "Start"}),
             WorkflowNode(id="end-1", type="end", position={"x": 300, "y": 0}, data={"label": "End"}),

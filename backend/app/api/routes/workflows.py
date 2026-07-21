@@ -23,11 +23,13 @@ from app.schemas.workflow import (
     WorkflowAIAnalyzeResponse,
     WorkflowAIGenerateRequest,
     WorkflowAIGenerateResponse,
+    WorkflowAIStatusResponse,
     WorkflowCreate,
     WorkflowRead,
     WorkflowUpdate,
     WorkflowValidationResult,
 )
+from app.core.config import settings
 
 router = APIRouter(prefix="/orgs/{organization_id}/workflows", tags=["workflows"])
 
@@ -130,6 +132,7 @@ async def generate_workflow_graph(
             organization_id,
             workflow_id,
             payload.prompt,
+            payload.use_current_graph,
             current_user,
             ai_service,
         )
@@ -146,6 +149,23 @@ async def generate_workflow_graph(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AI could not generate a workflow graph",
         ) from exc
+
+
+@router.get("/{workflow_id}/ai/status", response_model=WorkflowAIStatusResponse)
+async def workflow_ai_status(
+    organization_id: str,
+    workflow_id: str,
+    current_user: Annotated[User, Depends(current_user_dependency)],
+    service: Annotated[WorkflowService, Depends(workflow_service)],
+) -> WorkflowAIStatusResponse:
+    try:
+        await service.get(organization_id, workflow_id, current_user)
+    except OrganizationAccessDeniedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
+    except WorkflowNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
+
+    return WorkflowAIStatusResponse(configured=bool(settings.openai_api_key), model=settings.openai_model)
 
 
 @router.post("/{workflow_id}/ai/analyze-graph", response_model=WorkflowAIAnalyzeResponse)

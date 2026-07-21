@@ -41,6 +41,7 @@ class WorkflowValidationResult(BaseModel):
 
 class WorkflowAIGenerateRequest(BaseModel):
     prompt: str = Field(min_length=8, max_length=2000)
+    use_current_graph: bool = False
 
 
 class WorkflowAIGenerateResponse(BaseModel):
@@ -63,3 +64,8 @@ class WorkflowAIAnalyzeResponse(BaseModel):
     issues: list[str] = Field(default_factory=list)
     suggestions: list[str] = Field(default_factory=list)
     validation: WorkflowValidationResult
+
+
+class WorkflowAIStatusResponse(BaseModel):
+    configured: bool
+    model: str
