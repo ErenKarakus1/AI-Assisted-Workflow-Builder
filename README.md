@@ -77,6 +77,7 @@ flowchart LR
         Workflows --> Validator[Workflow Validator]
         Instances --> Engine[Workflow Engine]
         Tasks --> Engine
+        Instances --> Snapshots[Graph Snapshots]
 
         Engine --> Events[Event Timeline Service]
         Engine --> Scheduler[Delay Scheduler]
@@ -90,6 +91,7 @@ flowchart LR
     Workflows --> Mongo
     Tasks --> Mongo
     Instances --> Mongo
+    Snapshots --> Mongo
     Engine --> Mongo
     Events --> Mongo
 
