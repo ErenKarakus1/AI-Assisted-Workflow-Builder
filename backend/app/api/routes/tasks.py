@@ -12,6 +12,7 @@ from app.api.dependencies import (
     workflow_instance_repository_dependency,
     workflow_repository_dependency,
 )
+from app.core.rate_limit import rate_limit
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
@@ -73,6 +74,7 @@ async def approve_task(
     organization_id: str,
     task_id: str,
     payload: TaskDecisionRequest,
+    _rate_limit: Annotated[None, Depends(rate_limit("tasks:approve", limit=60, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[TaskService, Depends(task_service)],
 ) -> TaskRead:
@@ -84,6 +86,7 @@ async def reject_task(
     organization_id: str,
     task_id: str,
     payload: TaskDecisionRequest,
+    _rate_limit: Annotated[None, Depends(rate_limit("tasks:reject", limit=60, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[TaskService, Depends(task_service)],
 ) -> TaskRead:

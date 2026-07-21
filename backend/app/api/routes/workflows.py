@@ -7,6 +7,7 @@ from app.api.dependencies import (
     organization_member_repository_dependency,
     workflow_repository_dependency,
 )
+from app.core.rate_limit import rate_limit
 from app.domain.orgs.repository import OrganizationMemberRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
 from app.domain.workflows.ai import AIConfigurationError, AIGenerationError, WorkflowAIService
@@ -49,6 +50,7 @@ def workflow_ai_service() -> WorkflowAIService:
 async def create_workflow(
     organization_id: str,
     payload: WorkflowCreate,
+    _rate_limit: Annotated[None, Depends(rate_limit("workflows:create", limit=30, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[WorkflowService, Depends(workflow_service)],
 ) -> WorkflowRead:
@@ -89,6 +91,7 @@ async def get_workflow(
 async def validate_workflow(
     organization_id: str,
     workflow_id: str,
+    _rate_limit: Annotated[None, Depends(rate_limit("workflows:validate", limit=60, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[WorkflowService, Depends(workflow_service)],
 ) -> WorkflowValidationResult:
@@ -105,6 +108,7 @@ async def validate_workflow_draft(
     organization_id: str,
     workflow_id: str,
     payload: WorkflowUpdate,
+    _rate_limit: Annotated[None, Depends(rate_limit("workflows:validate-draft", limit=60, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[WorkflowService, Depends(workflow_service)],
 ) -> WorkflowValidationResult:
@@ -123,6 +127,7 @@ async def generate_workflow_graph(
     organization_id: str,
     workflow_id: str,
     payload: WorkflowAIGenerateRequest,
+    _rate_limit: Annotated[None, Depends(rate_limit("workflows:ai:generate", limit=10, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[WorkflowService, Depends(workflow_service)],
     ai_service: Annotated[WorkflowAIService, Depends(workflow_ai_service)],
@@ -175,6 +180,7 @@ async def analyze_workflow_graph(
     organization_id: str,
     workflow_id: str,
     payload: WorkflowAIAnalyzeRequest,
+    _rate_limit: Annotated[None, Depends(rate_limit("workflows:ai:analyze", limit=15, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[WorkflowService, Depends(workflow_service)],
     ai_service: Annotated[WorkflowAIService, Depends(workflow_ai_service)],
@@ -206,6 +212,7 @@ async def analyze_workflow_graph(
 async def activate_workflow(
     organization_id: str,
     workflow_id: str,
+    _rate_limit: Annotated[None, Depends(rate_limit("workflows:activate", limit=30, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[WorkflowService, Depends(workflow_service)],
 ) -> WorkflowRead:
@@ -228,6 +235,7 @@ async def activate_workflow(
 async def deactivate_workflow(
     organization_id: str,
     workflow_id: str,
+    _rate_limit: Annotated[None, Depends(rate_limit("workflows:deactivate", limit=30, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[WorkflowService, Depends(workflow_service)],
 ) -> WorkflowRead:
@@ -246,6 +254,7 @@ async def update_workflow(
     organization_id: str,
     workflow_id: str,
     payload: WorkflowUpdate,
+    _rate_limit: Annotated[None, Depends(rate_limit("workflows:update", limit=30, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[WorkflowService, Depends(workflow_service)],
 ) -> WorkflowRead:
@@ -263,6 +272,7 @@ async def update_workflow(
 async def delete_workflow(
     organization_id: str,
     workflow_id: str,
+    _rate_limit: Annotated[None, Depends(rate_limit("workflows:delete", limit=20, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[WorkflowService, Depends(workflow_service)],
 ) -> Response:

@@ -4,6 +4,7 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies import current_user_dependency, user_repository_dependency
+from app.core.rate_limit import rate_limit
 from app.domain.auth.repository import UserRepository
 from app.domain.auth.service import (
     AuthService,
@@ -29,6 +30,7 @@ def read_user(user: User) -> UserRead:
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 async def register(
     payload: UserCreate,
+    _rate_limit: Annotated[None, Depends(rate_limit("auth:register", limit=5, window_seconds=60))],
     users: Annotated[UserRepository, Depends(user_repository_dependency)],
 ) -> UserRead:
     try:
@@ -45,6 +47,7 @@ async def register(
 @router.post("/login", response_model=TokenPair)
 async def login(
     payload: UserLogin,
+    _rate_limit: Annotated[None, Depends(rate_limit("auth:login", limit=10, window_seconds=60))],
     users: Annotated[UserRepository, Depends(user_repository_dependency)],
 ) -> TokenPair:
     try:
@@ -59,6 +62,7 @@ async def login(
 @router.post("/refresh", response_model=TokenPair)
 async def refresh(
     payload: RefreshTokenRequest,
+    _rate_limit: Annotated[None, Depends(rate_limit("auth:refresh", limit=30, window_seconds=60))],
     users: Annotated[UserRepository, Depends(user_repository_dependency)],
 ) -> TokenPair:
     try:

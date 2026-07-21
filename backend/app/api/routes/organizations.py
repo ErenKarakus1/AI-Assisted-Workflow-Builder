@@ -13,6 +13,7 @@ from app.api.dependencies import (
     workflow_instance_repository_dependency,
     workflow_repository_dependency,
 )
+from app.core.rate_limit import rate_limit
 from app.domain.auth.repository import UserRepository
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
@@ -46,6 +47,7 @@ router = APIRouter(prefix="/orgs", tags=["organizations"])
 @router.post("", response_model=OrganizationRead, status_code=status.HTTP_201_CREATED)
 async def create_organization(
     payload: OrganizationCreate,
+    _rate_limit: Annotated[None, Depends(rate_limit("orgs:create", limit=20, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     organizations: Annotated[OrganizationRepository, Depends(organization_repository_dependency)],
     members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
@@ -125,6 +127,7 @@ async def get_organization(
 @router.delete("/{organization_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_organization(
     organization_id: str,
+    _rate_limit: Annotated[None, Depends(rate_limit("orgs:delete", limit=10, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     organizations: Annotated[OrganizationRepository, Depends(organization_repository_dependency)],
     members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
@@ -173,6 +176,7 @@ async def list_organization_members(
 async def add_organization_member(
     organization_id: str,
     payload: OrganizationMemberCreate,
+    _rate_limit: Annotated[None, Depends(rate_limit("orgs:members:create", limit=30, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     organizations: Annotated[OrganizationRepository, Depends(organization_repository_dependency)],
     members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
@@ -211,6 +215,7 @@ async def add_organization_member(
 async def remove_organization_member(
     organization_id: str,
     member_id: str,
+    _rate_limit: Annotated[None, Depends(rate_limit("orgs:members:delete", limit=30, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     organizations: Annotated[OrganizationRepository, Depends(organization_repository_dependency)],
     members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],

@@ -12,6 +12,7 @@ from app.api.routes.organizations import router as organizations_router
 from app.api.routes.tasks import router as tasks_router
 from app.api.routes.workflows import router as workflows_router
 from app.core.config import settings
+from app.core.rate_limit import close_redis_client
 from app.db.mongo import close_database, ensure_indexes, get_database
 from app.domain.instances.repository import MongoInstanceEventRepository, MongoWorkflowInstanceRepository
 from app.domain.scheduling.repository import MongoScheduledJobRepository
@@ -32,6 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         except asyncio.CancelledError:
             pass
     await close_database()
+    await close_redis_client()
 
 
 async def run_scheduler_loop() -> None:

@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     mongodb_url: str = "mongodb://localhost:27017"
     mongodb_database: str = "workflow_builder"
     redis_url: str = "redis://localhost:6379/0"
+    rate_limit_enabled: bool = False
+    rate_limit_fail_open: bool = True
 
     openai_api_key: str = ""
     openai_model: str = "gpt-5.4-nano"

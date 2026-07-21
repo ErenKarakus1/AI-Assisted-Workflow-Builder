@@ -12,6 +12,7 @@ from app.api.dependencies import (
     workflow_instance_repository_dependency,
     workflow_repository_dependency,
 )
+from app.core.rate_limit import rate_limit
 from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.instances.service import (
     WorkflowInstanceNotFoundError,
@@ -55,6 +56,7 @@ async def start_workflow_instance(
     organization_id: str,
     workflow_id: str,
     payload: WorkflowInstanceCreate,
+    _rate_limit: Annotated[None, Depends(rate_limit("instances:start", limit=30, window_seconds=60))],
     current_user: Annotated[User, Depends(current_user_dependency)],
     service: Annotated[WorkflowInstanceService, Depends(instance_service)],
 ) -> WorkflowInstanceRead:
