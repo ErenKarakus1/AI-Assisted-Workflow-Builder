@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
     env_file:
-      - ./backend/.env.example
+      - ./backend/.env
     environment:
       MONGODB_URL: "mongodb://mongo:27017"
       REDIS_URL: "redis://redis:6379/0"
@@ -26,7 +26,7 @@ services:
       context: ./backend
     command: ["python", "-m", "app.workers.scheduler"]
     env_file:
-      - ./backend/.env.example
+      - ./backend/.env
     environment:
       MONGODB_URL: "mongodb://mongo:27017"
       REDIS_URL: "redis://redis:6379/0"
