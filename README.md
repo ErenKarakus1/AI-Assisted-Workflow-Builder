@@ -1,6 +1,8 @@
 # AI-Assisted Workflow Builder
 
-A visual workflow automation platform for organization-based approval processes. Users can create workflows with start, approval, condition, delay, and end nodes; validate and activate drafts; run workflow instances; review approval tasks; inspect event history; and optionally draft or analyze workflow graphs with AI.
+A visual workflow automation platform for organization-based approval processes.
+
+Users can design workflows with start, approval, condition, delay, and end nodes; validate and activate drafts; run workflow instances; complete assigned approval tasks; inspect event history; and optionally use AI to draft or analyze workflow graphs.
 
 ## Stack
 
@@ -11,36 +13,56 @@ A visual workflow automation platform for organization-based approval processes.
 
 ## Features
 
+* Visual workflow editor built with React Flow
 * Authentication with access and refresh tokens
 * Organizations with owner, admin, and member roles
 * Workflow draft editing, validation, activation, inactivation, and deletion
+* Start, condition, approval, delay, and end nodes
 * Role- and user-based approval tasks
-* Workflow instance runs with event timelines and graph snapshots
-* Delay nodes processed by a dedicated scheduler worker
-* Redis-backed fixed-window rate limiting for authentication, write actions, task decisions, workflow starts, and AI requests
+* Workflow instance execution with graph snapshots
+* Event timelines for execution and audit history
+* Persistent delayed workflow execution
+* Redis-backed fixed-window rate limiting
 * Optional AI-assisted workflow drafting and graph analysis
 
 ## How It Works
 
-Workflows are built from a small set of node types:
+Workflows are created from a small set of node types:
 
 * `start` — begins the workflow
-* `condition` — routes based on input or context values
+* `condition` — routes execution based on workflow input or context
 * `approval` — pauses execution until an authorized user approves or rejects
-* `delay` — schedules the workflow to continue after a configured duration
+* `delay` — schedules execution to continue after a configured duration
 * `end` — completes the workflow instance with a result
 
-Draft workflows can be edited and validated before activation. Active workflows can be started as workflow instances.
+Draft workflows can be edited and validated before activation. Only active workflows can be started as workflow instances.
 
-Each instance stores a graph snapshot, so previous runs can still be viewed against the exact graph they used, even if the original workflow is later changed.
+Each instance stores a snapshot of the graph it started with. This preserves the exact execution structure used by older runs, even if the original workflow is changed later.
+
+## Workflow Validation
+
+The backend validates workflow graphs before they can be activated.
+
+Validation includes checks such as:
+
+* exactly one start node
+* at least one end node
+* unique node and edge identifiers
+* valid edge references
+* reachable workflow paths
+* complete condition branches
+* valid approval configuration
+* supported graph structure
+
+The deterministic validator remains authoritative even when AI features are enabled.
 
 ## Permissions
 
 Organizations support three roles:
 
 * Owner — full organization and workflow control
-* Admin — workflow and member management, except owner-only destructive actions
-* Member — can view organization workflows and act only on approval tasks assigned to them, their role, or everyone
+* Admin — workflow and member management, excluding owner-only actions
+* Member — can view organization workflows and act on eligible approval tasks
 
 Approval tasks can be assigned to:
 
@@ -50,29 +72,44 @@ Approval tasks can be assigned to:
 * administrators
 * anyone in the organization
 
-Owners and administrators can view organization tasks for oversight, but task decisions are still validated by the backend against the task assignment.
+Owners and administrators can view organization tasks for oversight, but every approval or rejection is still authorized by the backend against the task assignment.
 
 ## Runs and Tasks
 
-Runs and tasks use backend pagination with Load more controls so large histories are not loaded all at once.
+Workflow runs and approval tasks use backend pagination so large histories are not loaded into the browser at once.
 
-Dashboard cards use backend statistics for real counts, while dashboard preview lists remain intentionally limited.
+Dashboard cards use backend statistics for accurate counts, while preview lists remain intentionally limited.
 
-Task search is handled by the backend, allowing it to find tasks that have not yet been loaded into the browser.
+Task search is performed by the backend, allowing users to find tasks that have not yet been loaded into the current page.
+
+Each workflow instance includes an event timeline showing important execution activity such as:
+
+* instance creation
+* node execution
+* approval creation
+* approval or rejection decisions
+* delayed execution
+* workflow completion
+* execution failure
 
 ## AI Assistance
 
-AI support is optional. Workflow editing, validation, execution, approvals, delayed jobs, runs, and audit history work without an OpenAI API key.
+AI support is optional. Workflow editing, validation, execution, approvals, delays, runs, and audit history work without an OpenAI API key.
 
 When `OPENAI_API_KEY` is configured, the workflow detail page can:
 
 * draft a workflow graph from a natural-language prompt
-* use the current graph as a starting point
+* use the current graph as context for a revised draft
 * analyze the current graph and suggest improvements
 
 Generated graphs are validated by the same deterministic workflow validator before they can be saved or activated.
 
-AI does not execute workflows, make approval decisions, or directly modify running instances.
+AI does not:
+
+* execute workflows
+* approve or reject tasks
+* activate workflows
+* directly modify running instances
 
 ## Architecture
 
@@ -81,7 +118,7 @@ flowchart LR
     User[User] --> Frontend[React Frontend<br/>Nginx Container]
     Frontend -->|API Request| API[FastAPI Backend]
 
-    subgraph APIContainer[API Container]
+    subgraph Application[FastAPI Application]
         API --> RateLimit[Fixed-Window<br/>Rate-Limiting Middleware]
 
         RateLimit -->|Allowed| Auth[Authentication & RBAC]
@@ -100,11 +137,7 @@ flowchart LR
         Engine -->|Create Scheduled Job| Scheduling[Scheduling Service]
     end
 
-    subgraph WorkerContainer[Worker Container]
-        Worker[Scheduler Worker]
-    end
-
-    RateLimit <--> Redis[(Redis<br/>Fixed-Window Counters)]
+    RateLimit <--> Redis[(Redis<br/>Rate-Limit Counters)]
 
     Mongo[(MongoDB<br/>Users, Organizations, Workflows,<br/>Instances, Tasks, Events, Scheduled Jobs)]
 
@@ -117,8 +150,9 @@ flowchart LR
     Events --> Mongo
     Scheduling --> Mongo
 
-    Worker -->|Atomically Claim Due Jobs| Mongo
-    Worker -->|Resume Delayed Workflow| Engine
+    Background[Background Scheduler]
+    Background -->|Process Due Jobs| Mongo
+    Background -->|Resume Workflow| Engine
 
     AIService -->|Normalized Workflow Data| OpenAI[OpenAI API]
     OpenAI -->|Drafting & Analysis Results| AIService
@@ -136,15 +170,15 @@ backend/
     engine/     Workflow execution engine
     models/     Domain and database models
     schemas/    API schemas
-    workers/    Dedicated scheduler worker
+    workers/    Background job processing
   tests/        Backend tests
 
 frontend/
   src/
     api/        API client functions
-    app/        App shell and routing
-    components/ Shared layout and components
-    features/   Feature pages and UI
+    app/        Application shell and routing
+    components/ Shared layout and UI components
+    features/   Feature pages and workflow UI
     lib/        Shared utilities
     styles/     Global CSS
     types/      API and shared TypeScript types
@@ -166,19 +200,19 @@ Docker Compose starts:
 
 * `web` — built React application served by Nginx
 * `api` — FastAPI backend
-* `worker` — dedicated scheduler process for delayed workflow jobs
+* `worker` — processes scheduled workflow continuations
 * `mongo` — MongoDB application storage
-* `redis` — Redis fixed-window rate-limit counters
-
-View worker logs:
-
-```powershell
-docker compose logs -f worker
-```
+* `redis` — Redis rate-limit counters
 
 ## Environment
 
-Backend defaults are defined in `backend/.env.example`. Docker Compose uses that file and overrides the MongoDB and Redis service URLs where necessary.
+Backend defaults are defined in:
+
+```text
+backend/.env.example
+```
+
+Docker Compose uses this file and overrides internal MongoDB and Redis service URLs where necessary.
 
 For AI features, configure:
 
@@ -187,20 +221,20 @@ OPENAI_API_KEY="your-key"
 OPENAI_MODEL="gpt-5.4-nano"
 ```
 
-Rate limiting is enabled in Docker Compose:
+Rate limiting can be configured with:
 
 ```env
 RATE_LIMIT_ENABLED=true
 RATE_LIMIT_FAIL_OPEN=true
 ```
 
-The scheduler worker polling interval can be configured with:
+Background polling can be configured with:
 
 ```env
 SCHEDULER_POLL_SECONDS=1
 ```
 
-For local frontend development, `frontend/.env.example` contains:
+For local frontend development:
 
 ```env
 VITE_API_BASE_URL="http://localhost:8000"
@@ -221,7 +255,7 @@ Run the backend API:
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Run the scheduler worker in a separate terminal:
+Run background processing in another terminal:
 
 ```powershell
 cd backend
@@ -235,6 +269,8 @@ cd frontend
 npm install
 npm run dev
 ```
+
+## Tests
 
 Run backend tests:
 
@@ -250,29 +286,31 @@ cd frontend
 npm run build
 ```
 
-## Verifying Delayed Workflows
+## Design Decisions
 
-To verify that delayed workflows are handled by the dedicated worker:
+### MongoDB
 
-```powershell
-docker compose stop worker
-```
+Workflow graphs contain nested nodes, edges, and configuration objects, making MongoDB a natural fit for storing workflow definitions and graph snapshots.
 
-Start a workflow containing a delay node. The workflow instance should remain waiting after the delay becomes due.
+Separate collections are used for workflows, instances, tasks, events, organizations, users, and scheduled jobs.
 
-Restart the worker:
+### Deterministic Execution
 
-```powershell
-docker compose start worker
-docker compose logs -f worker
-```
+Workflow execution is handled by deterministic backend logic. AI is isolated from execution and is used only for optional drafting and analysis.
 
-The worker should claim the overdue scheduled job and resume the workflow instance.
+### Persistent Delays
+
+Delayed workflow continuations are stored in MongoDB. This allows delayed instances to remain recoverable across service restarts.
+
+### Rate Limiting
+
+Redis-backed fixed-window counters are used to protect authentication endpoints, write operations, workflow starts, task decisions, and AI requests.
 
 ## Known Limitations
 
-* AI drafting and analysis are best-effort and may require manual review before saving.
-* Rate limiting uses a fixed-window Redis counter rather than a sliding-window algorithm.
-* Scheduled jobs are processed through MongoDB polling rather than a message broker.
-* Workflow search is client-side because workflows are loaded per organization; runs and tasks use backend pagination.
-* Docker Compose is intended for local development and demonstration rather than hardened production hosting.
+* AI drafting and analysis are best-effort and may require manual review.
+* Rate limiting uses a fixed-window counter rather than a sliding-window algorithm.
+* Scheduled workflow continuations use MongoDB polling rather than a message broker.
+* Workflow search is client-side because workflows are loaded per organization.
+* Runs and tasks use backend pagination.
+* Docker Compose is intended for local development and demonstration rather than hardened production deployment.
