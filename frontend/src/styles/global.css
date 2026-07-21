@@ -891,9 +891,9 @@ textarea {
   display: grid;
   gap: 16px;
   overflow: visible;
-  border-color: #cfdff4;
+  border-color: #d8d5ff;
   background:
-    radial-gradient(circle at top left, rgb(36 107 95 / 10%), transparent 32%),
+    linear-gradient(135deg, rgb(99 102 241 / 8%), rgb(14 165 233 / 6%)),
     #ffffff;
   padding: 18px;
 }
@@ -921,7 +921,7 @@ textarea {
 
 .ai-prompt-field textarea {
   min-height: 112px;
-  border-color: #b9c8dc;
+  border-color: #c9c7f5;
   box-shadow: 0 1px 2px rgb(16 24 40 / 5%);
 }
 
