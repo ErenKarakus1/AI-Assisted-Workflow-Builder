@@ -4,14 +4,14 @@
 ![Tests](https://img.shields.io/badge/tests-61%20passing-brightgreen?style=flat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
 
-![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat)
-![Python](https://img.shields.io/badge/Python-backend-3776AB?style=flat)
-![React](https://img.shields.io/badge/React-frontend-61DAFB?style=flat)
-![TypeScript](https://img.shields.io/badge/TypeScript-frontend-3178C6?style=flat)
-![MongoDB](https://img.shields.io/badge/MongoDB-database-47A248?style=flat)
-![Redis](https://img.shields.io/badge/Redis-rate%20limiting-DC382D?style=flat)
-![Docker](https://img.shields.io/badge/Docker-infrastructure-2496ED?style=flat)
-![OpenAI](https://img.shields.io/badge/OpenAI-optional%20AI%20integration-412991?style=flat)
+![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-backend-3776AB?style=flat&logo=python&logoColor=white)
+![React](https://img.shields.io/badge/React-frontend-61DAFB?style=flat&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-frontend-3178C6?style=flat&logo=typescript&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-database-47A248?style=flat&logo=mongodb&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-rate%20limiting-DC382D?style=flat&logo=redis&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-infrastructure-2496ED?style=flat&logo=docker&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI-optional%20AI%20integration-412991?style=flat&logo=openai&logoColor=white)
 
 A full-stack visual workflow automation platform for organization-based approval processes.
 
