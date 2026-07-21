@@ -97,7 +97,7 @@ export function RunsPage() {
         {runsQuery.hasNextPage ? (
           <div className="load-more-row load-more-row--runs">
             <button
-              className="button button--ghost"
+              className="button button--load-more"
               type="button"
               disabled={runsQuery.isFetchingNextPage}
               onClick={() => runsQuery.fetchNextPage()}

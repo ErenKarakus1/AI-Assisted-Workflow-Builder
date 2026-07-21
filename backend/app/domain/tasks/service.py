@@ -50,14 +50,41 @@ class TaskService:
         status: TaskStatus | None = None,
         limit: int = 50,
         before: datetime | None = None,
+        search: str | None = None,
     ) -> TaskPageRead:
         membership = await self._get_membership(organization_id, user)
-        repository_limit = limit + 1 if membership.role in {OrganizationRole.OWNER, OrganizationRole.ADMIN} else None
-        tasks = await self.tasks.list_by_organization(organization_id, status, repository_limit, before)
-        if membership.role not in {OrganizationRole.OWNER, OrganizationRole.ADMIN}:
-            tasks = [task for task in tasks if self._is_task_visible_to_member(task, user.id, membership.role)]
-        page_items = tasks[:limit]
-        next_cursor = page_items[-1].created_at if len(tasks) > limit and page_items else None
+        page_items: list[Task] = []
+        cursor = before
+        next_cursor: datetime | None = None
+        normalized_search = search.strip().lower() if search else ""
+
+        while len(page_items) <= limit:
+            batch = await self.tasks.list_by_organization(organization_id, status, limit + 1, cursor)
+            if not batch:
+                next_cursor = None
+                break
+
+            for task in batch:
+                if membership.role not in {OrganizationRole.OWNER, OrganizationRole.ADMIN} and not self._is_task_visible_to_member(
+                    task,
+                    user.id,
+                    membership.role,
+                ):
+                    continue
+                if normalized_search and not await self._task_matches_search(task, normalized_search):
+                    continue
+                page_items.append(task)
+                if len(page_items) > limit:
+                    break
+
+            cursor = batch[-1].created_at
+            next_cursor = cursor if len(batch) > limit or len(page_items) > limit else None
+            if len(batch) <= limit:
+                break
+
+        page_items = page_items[:limit]
+        if len(page_items) == limit and next_cursor:
+            next_cursor = page_items[-1].created_at
         return TaskPageRead(items=[self._read(task) for task in page_items], next_cursor=next_cursor)
 
     async def count_for_org(
@@ -161,6 +188,27 @@ class TaskService:
         if task.assigned_role:
             return self._role_assignment_matches(task.assigned_role, role)
         return False
+
+    async def _task_matches_search(self, task: Task, normalized_search: str) -> bool:
+        workflow = await self.workflows.get_by_id(task.workflow_id)
+        node_label = ""
+        if workflow:
+            node = next((workflow_node for workflow_node in workflow.nodes if workflow_node.id == task.node_id), None)
+            if node:
+                label = node.data.get("label")
+                if isinstance(label, str | int | float | bool):
+                    node_label = str(label)
+
+        searchable_text = " ".join(
+            [
+                workflow.name if workflow else "",
+                node_label,
+                task.instance_id,
+                task.assigned_role or "",
+                task.assigned_user_id or "",
+            ]
+        ).lower()
+        return normalized_search in searchable_text
 
     def _role_assignment_matches(self, assigned_role: str, role: OrganizationRole) -> bool:
         if assigned_role == "all":

@@ -45,9 +45,10 @@ async def list_tasks(
     status_filter: Annotated[TaskStatus | None, Query(alias="status")] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     before: datetime | None = None,
+    search: Annotated[str | None, Query(min_length=1, max_length=120)] = None,
 ) -> TaskPageRead:
     try:
-        return await service.list_for_org(organization_id, current_user, status_filter, limit, before)
+        return await service.list_for_org(organization_id, current_user, status_filter, limit, before, search)
     except OrganizationAccessDeniedError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization access denied") from exc
 

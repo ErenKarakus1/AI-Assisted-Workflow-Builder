@@ -16,6 +16,7 @@ export function TasksPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
+  const [submittedSearchTerm, setSubmittedSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<TaskStatusFilter>("all");
   const [assignmentFilter, setAssignmentFilter] = useState<TaskAssignmentFilter>("all");
   const organizationsQuery = useQuery({
@@ -30,15 +31,17 @@ export function TasksPage() {
   );
 
   const pendingTasksQuery = useInfiniteQuery({
-    queryKey: ["tasks", organizationId, "pending"],
-    queryFn: ({ pageParam }) => listTasks(organizationId, { status: "pending", limit: 50, before: pageParam }),
+    queryKey: ["tasks", organizationId, "pending", submittedSearchTerm],
+    queryFn: ({ pageParam }) =>
+      listTasks(organizationId, { status: "pending", limit: 50, before: pageParam, search: submittedSearchTerm }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     enabled: Boolean(organizationId) && statusFilter !== "completed",
   });
   const completedTasksQuery = useInfiniteQuery({
-    queryKey: ["tasks", organizationId, "completed"],
-    queryFn: ({ pageParam }) => listTasks(organizationId, { status: "completed", limit: 50, before: pageParam }),
+    queryKey: ["tasks", organizationId, "completed", submittedSearchTerm],
+    queryFn: ({ pageParam }) =>
+      listTasks(organizationId, { status: "completed", limit: 50, before: pageParam, search: submittedSearchTerm }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     enabled: Boolean(organizationId) && statusFilter !== "pending",
@@ -78,33 +81,31 @@ export function TasksPage() {
     [workflowsQuery.data],
   );
   const canSeeAllTasks = selectedOrg?.role === "owner" || selectedOrg?.role === "admin";
+  const submitSearch = () => setSubmittedSearchTerm(searchTerm.trim());
+  const clearSearch = () => {
+    setSearchTerm("");
+    setSubmittedSearchTerm("");
+  };
   const pendingTasks = useMemo(
     () =>
       filterTasks({
         tasks: pendingTasksQuery.data?.pages.flatMap((page) => page.items) ?? [],
-        workflowsById,
-        searchTerm,
         assignmentFilter,
         userId: user?.id,
         role: selectedOrg?.role,
       }),
-    [assignmentFilter, pendingTasksQuery.data, searchTerm, selectedOrg?.role, user?.id, workflowsById],
+    [assignmentFilter, pendingTasksQuery.data, selectedOrg?.role, user?.id],
   );
   const completedTasks = useMemo(
     () =>
       filterTasks({
         tasks: completedTasksQuery.data?.pages.flatMap((page) => page.items) ?? [],
-        workflowsById,
-        searchTerm,
         assignmentFilter,
         userId: user?.id,
         role: selectedOrg?.role,
       }),
-    [assignmentFilter, completedTasksQuery.data, searchTerm, selectedOrg?.role, user?.id, workflowsById],
+    [assignmentFilter, completedTasksQuery.data, selectedOrg?.role, user?.id],
   );
-  const hasMoreSearchableTasks =
-    (statusFilter !== "completed" && pendingTasksQuery.hasNextPage) ||
-    (statusFilter !== "pending" && completedTasksQuery.hasNextPage);
 
   return (
     <section className="page-stack">
@@ -131,12 +132,27 @@ export function TasksPage() {
 
       {organizationId ? (
         <>
-          <div className="filter-bar filter-bar--three">
-            <input
-              placeholder="Search loaded tasks by workflow or approval"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-            />
+          <div className="filter-bar filter-bar--tasks">
+            <div className="search-control">
+              <input
+                placeholder="Search tasks by workflow, approval, or assignee"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    submitSearch();
+                  }
+                }}
+              />
+              <button className="button" type="button" onClick={submitSearch}>
+                Search
+              </button>
+              {submittedSearchTerm ? (
+                <button className="button button--ghost" type="button" onClick={clearSearch}>
+                  Clear
+                </button>
+              ) : null}
+            </div>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as TaskStatusFilter)}>
               <option value="all">All statuses</option>
               <option value="pending">Pending</option>
@@ -153,9 +169,6 @@ export function TasksPage() {
               {canSeeAllTasks ? <option value="oversight">Oversight only</option> : null}
             </select>
           </div>
-          {searchTerm.trim() && hasMoreSearchableTasks ? (
-            <p className="field-hint">Search checks loaded tasks only. Load more to include older tasks.</p>
-          ) : null}
 
           {statusFilter !== "completed" ? (
             <TaskList
@@ -288,9 +301,9 @@ function TaskList({
         <p className="muted">{emptyText}</p>
       )}
       {hasNextPage ? (
-        <div className="load-more-row">
+        <div className="load-more-row load-more-row--tasks">
           <button
-            className="button button--ghost"
+            className="button button--load-more"
             type="button"
             disabled={isFetchingNextPage}
             onClick={onLoadMore}
@@ -305,15 +318,11 @@ function TaskList({
 
 function filterTasks({
   tasks,
-  workflowsById,
-  searchTerm,
   assignmentFilter,
   userId,
   role,
 }: {
   tasks: Task[];
-  workflowsById: Map<string, Workflow>;
-  searchTerm: string;
   assignmentFilter: TaskAssignmentFilter;
   userId: string | undefined;
   role: string | undefined;
@@ -321,8 +330,6 @@ function filterTasks({
   return tasks.filter((task) =>
     taskMatchesFilters({
       task,
-      workflowsById,
-      searchTerm,
       assignmentFilter,
       isActionable: isTaskActionable(task, userId, role),
     }),
@@ -342,26 +349,13 @@ function workflowName(task: Task, workflowsById: Map<string, Workflow>): string 
 
 function taskMatchesFilters({
   task,
-  workflowsById,
-  searchTerm,
   assignmentFilter,
   isActionable,
 }: {
   task: Task;
-  workflowsById: Map<string, Workflow>;
-  searchTerm: string;
   assignmentFilter: TaskAssignmentFilter;
   isActionable: boolean;
 }): boolean {
-  const normalizedSearch = searchTerm.trim().toLowerCase();
-  const searchableText = [
-    workflowName(task, workflowsById),
-    taskLabel(task, workflowsById),
-    task.instance_id,
-    task.assigned_role ?? "",
-    task.assigned_user_id ?? "",
-  ].join(" ").toLowerCase();
-  const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
   const matchesAssignment =
     assignmentFilter === "all" ||
     (assignmentFilter === "actionable" && isActionable) ||
@@ -369,7 +363,7 @@ function taskMatchesFilters({
     (assignmentFilter === "role" && Boolean(task.assigned_role)) ||
     (assignmentFilter === "oversight" && !isActionable);
 
-  return matchesSearch && matchesAssignment;
+  return matchesAssignment;
 }
 
 function assignmentLabel(

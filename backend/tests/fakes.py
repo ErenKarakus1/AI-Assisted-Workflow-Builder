@@ -216,6 +216,7 @@ class InMemoryTaskRepository(TaskRepository):
         status: TaskStatus | None = None,
         limit: int | None = None,
         before: datetime | None = None,
+        search: str | None = None,
     ) -> list[Task]:
         tasks = [
             task
@@ -223,6 +224,12 @@ class InMemoryTaskRepository(TaskRepository):
             if task.organization_id == organization_id
             and (status is None or task.status == status)
             and (before is None or task.created_at < before)
+            and (
+                not search
+                or search.lower() in task.instance_id.lower()
+                or (task.assigned_role and search.lower() in task.assigned_role.lower())
+                or (task.assigned_user_id and search.lower() in task.assigned_user_id.lower())
+            )
         ]
         tasks = sorted(tasks, key=lambda task: task.created_at, reverse=True)
         return tasks[:limit] if limit is not None else tasks

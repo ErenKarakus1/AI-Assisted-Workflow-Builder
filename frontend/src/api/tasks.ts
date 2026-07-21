@@ -3,7 +3,7 @@ import type { Task, TaskPage, TaskStatus } from "../types/api";
 
 export function listTasks(
   organizationId: string,
-  options: { status?: TaskStatus | "all"; limit?: number; before?: string | null } = {},
+  options: { status?: TaskStatus | "all"; limit?: number; before?: string | null; search?: string } = {},
 ): Promise<TaskPage> {
   const params = new URLSearchParams();
   if (options.status && options.status !== "all") {
@@ -14,6 +14,9 @@ export function listTasks(
   }
   if (options.before) {
     params.set("before", options.before);
+  }
+  if (options.search?.trim()) {
+    params.set("search", options.search.trim());
   }
   const query = params.toString();
   return apiRequest<TaskPage>(`/api/orgs/${organizationId}/tasks${query ? `?${query}` : ""}`);

@@ -26,6 +26,7 @@ class TaskRepository(ABC):
         status: TaskStatus | None = None,
         limit: int | None = None,
         before: datetime | None = None,
+        search: str | None = None,
     ) -> list[Task]:
         raise NotImplementedError
 
@@ -66,12 +67,19 @@ class MongoTaskRepository(TaskRepository):
         status: TaskStatus | None = None,
         limit: int | None = None,
         before: datetime | None = None,
+        search: str | None = None,
     ) -> list[Task]:
         query = {"organization_id": organization_id}
         if status:
             query["status"] = status
         if before:
             query["created_at"] = {"$lt": before}
+        if search:
+            query["$or"] = [
+                {"instance_id": {"$regex": search, "$options": "i"}},
+                {"assigned_role": {"$regex": search, "$options": "i"}},
+                {"assigned_user_id": {"$regex": search, "$options": "i"}},
+            ]
         cursor = self.collection.find(query).sort("created_at", -1)
         documents = await cursor.to_list(length=limit)
         return [Task(**document) for document in documents]
