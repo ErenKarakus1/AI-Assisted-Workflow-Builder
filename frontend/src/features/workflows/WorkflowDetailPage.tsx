@@ -200,7 +200,7 @@ export function WorkflowDetailPage() {
     canManageWorkflow &&
     workflow?.status === "draft" &&
     !selectedInstance &&
-    aiStatusQuery.data?.configured === true &&
+    aiStatusQuery.data?.configured !== false &&
     aiPrompt.trim().length >= 8;
   const copySelectedSnapshotToDraft = useCallback(() => {
     if (!selectedInstance || !hasInstanceGraphSnapshot) {
@@ -317,69 +317,76 @@ export function WorkflowDetailPage() {
               <div className="ai-panel__header">
                 <div>
                   <p className="eyebrow">AI assistant</p>
-                  <h3>Draft a workflow graph</h3>
-                  <span>
-                    {useCurrentGraphForAI
-                      ? "Describe changes to make to the current graph."
-                      : "Describe the process, then review and save the generated graph below."}
-                  </span>
+                  {aiStatusQuery.data?.configured !== false ? (
+                    <>
+                      <h3>Draft or Analyze Graph</h3>
+                      <span>
+                        {useCurrentGraphForAI
+                          ? "Describe changes to make to the current graph."
+                          : "Generate a draft graph or analyze the current one."}
+                      </span>
+                    </>
+                  ) : null}
                 </div>
                 {aiDraft ? <span className="pill">Previewing draft</span> : null}
               </div>
               {aiStatusQuery.data?.configured === false ? (
-                <div className="ai-result ai-result--warning">
-                  <strong className="ai-result__title">AI is not configured</strong>
-                  <p>Add <code>OPENAI_API_KEY</code> to <code>backend/.env</code>, then restart the backend.</p>
+                <div className="ai-status-note">
+                  <strong>AI is not set up.</strong>
+                  <span>Drafting and analysis are unavailable.</span>
                 </div>
-              ) : null}
-              <label className="ai-prompt-field">
-                <span>What should this workflow do?</span>
-                <textarea
-                  value={aiPrompt}
-                  rows={4}
-                  placeholder="Example: If amount is over 1000, ask an admin to approve. Approved requests wait 30 minutes, then complete. Rejected requests end as rejected."
-                  onChange={(event) => setAiPrompt(event.target.value)}
-                />
-              </label>
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={useCurrentGraphForAI}
-                  onChange={(event) => setUseCurrentGraphForAI(event.target.checked)}
-                />
-                Use current graph as starting point
-              </label>
-              <div className="button-group">
-                <button
-                  className="button button--secondary"
-                  type="button"
-                  disabled={!canGenerateGraph || generateGraphMutation.isPending}
-                  onClick={() => generateGraphMutation.mutate()}
-                >
-                  {generateGraphMutation.isPending ? "Generating..." : "Generate graph"}
-                </button>
-                <button
-                  className="button button--ghost"
-                  type="button"
-                  disabled={analyzeGraphMutation.isPending}
-                  onClick={() => analyzeGraphMutation.mutate()}
-                >
-                  {analyzeGraphMutation.isPending ? "Analyzing..." : "Analyze current graph"}
-                </button>
-                {aiDraft ? (
-                  <button className="button button--ghost" type="button" onClick={() => setAiDraft(null)}>
-                    Discard AI draft
-                  </button>
-                ) : null}
-              </div>
+              ) : (
+                <>
+                  <label className="ai-prompt-field">
+                    <span>What should this workflow do?</span>
+                    <textarea
+                      value={aiPrompt}
+                      rows={4}
+                      placeholder="Example: If amount is over 1000, ask an admin to approve. Approved requests wait 30 minutes, then complete. Rejected requests end as rejected."
+                      onChange={(event) => setAiPrompt(event.target.value)}
+                    />
+                  </label>
+                  <label className="checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={useCurrentGraphForAI}
+                      onChange={(event) => setUseCurrentGraphForAI(event.target.checked)}
+                    />
+                    Use current graph as starting point
+                  </label>
+                  <div className="button-group">
+                    <button
+                      className="button button--secondary"
+                      type="button"
+                      disabled={!canGenerateGraph || generateGraphMutation.isPending}
+                      onClick={() => generateGraphMutation.mutate()}
+                    >
+                      {generateGraphMutation.isPending ? "Generating..." : "Generate graph"}
+                    </button>
+                    <button
+                      className="button button--ghost"
+                      type="button"
+                      disabled={analyzeGraphMutation.isPending}
+                      onClick={() => analyzeGraphMutation.mutate()}
+                    >
+                      {analyzeGraphMutation.isPending ? "Analyzing..." : "Analyze current graph"}
+                    </button>
+                    {aiDraft ? (
+                      <button className="button button--ghost" type="button" onClick={() => setAiDraft(null)}>
+                        Discard AI draft
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              )}
               {generateGraphMutation.isError ? (
                 <p className="form-error">
-                  {errorMessage(generateGraphMutation.error, "AI could not generate a workflow graph.")}
+                  {errorMessage(generateGraphMutation.error, "AI is not set up.")}
                 </p>
               ) : null}
               {analyzeGraphMutation.isError ? (
                 <p className="form-error">
-                  {errorMessage(analyzeGraphMutation.error, "AI could not analyze the workflow graph.")}
+                  {errorMessage(analyzeGraphMutation.error, "AI is not set up.")}
                 </p>
               ) : null}
               {generateGraphMutation.data && !generateGraphMutation.data.accepted ? (

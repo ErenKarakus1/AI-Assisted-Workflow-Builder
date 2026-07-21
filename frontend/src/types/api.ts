@@ -83,7 +83,6 @@ export type WorkflowAIAnalyzeResult = {
 
 export type WorkflowAIStatus = {
   configured: boolean;
-  model: string;
 };
 
 export type TaskStatus = "pending" | "completed";

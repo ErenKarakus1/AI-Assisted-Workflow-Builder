@@ -966,6 +966,23 @@ textarea {
   margin-bottom: 4px;
 }
 
+.ai-status-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border: 1px solid #fedf89;
+  border-radius: 999px;
+  background: #fffaeb;
+  color: #93370d;
+  padding: 9px 12px;
+}
+
+.ai-status-note span {
+  color: #93370d;
+  font-weight: 600;
+}
+
 .ai-analysis {
   display: grid;
   gap: 12px;

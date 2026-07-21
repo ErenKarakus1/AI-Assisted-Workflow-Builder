@@ -68,4 +68,3 @@ class WorkflowAIAnalyzeResponse(BaseModel):
 
 class WorkflowAIStatusResponse(BaseModel):
     configured: bool
-    model: str

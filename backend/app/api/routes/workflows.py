@@ -143,7 +143,7 @@ async def generate_workflow_graph(
     except WorkflowRevisionConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Workflow revision conflict") from exc
     except AIConfigurationError as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI is not configured") from exc
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI is not set up.") from exc
     except AIGenerationError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -165,7 +165,7 @@ async def workflow_ai_status(
     except WorkflowNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found") from exc
 
-    return WorkflowAIStatusResponse(configured=bool(settings.openai_api_key), model=settings.openai_model)
+    return WorkflowAIStatusResponse(configured=bool(settings.openai_api_key))
 
 
 @router.post("/{workflow_id}/ai/analyze-graph", response_model=WorkflowAIAnalyzeResponse)
@@ -192,7 +192,7 @@ async def analyze_workflow_graph(
     except WorkflowRevisionConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Workflow revision conflict") from exc
     except AIConfigurationError as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI is not configured") from exc
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI is not set up.") from exc
     except AIGenerationError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
