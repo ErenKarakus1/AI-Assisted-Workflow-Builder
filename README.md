@@ -95,7 +95,7 @@ AI suggestions never replace backend validation.
 
 ## Organizations and Permissions
 
-Organizations support three roles:
+Organizations support three roles.
 
 ### Owner
 
@@ -243,12 +243,12 @@ frontend/
 
 ## Requirements
 
-For the Docker setup:
+### Docker setup
 
 * Docker
 * Docker Compose
 
-For local development:
+### Local development
 
 * Python 3.11 or newer
 * Node.js
@@ -296,7 +296,7 @@ Open:
 * Backend API: http://localhost:8000
 * Health check: http://localhost:8000/api/health
 
-Docker Compose starts the following services:
+Docker Compose starts:
 
 * `web` — React frontend
 * `api` — FastAPI backend
@@ -358,7 +358,7 @@ backend/.env
 
 Docker Compose loads `backend/.env` for both the API and scheduler worker.
 
-The Compose configuration overrides `MONGODB_URL` and `REDIS_URL` with Docker service hostnames so containers can communicate with the `mongo` and `redis` services.
+The Compose configuration overrides `MONGODB_URL` and `REDIS_URL` with Docker service hostnames, allowing the containers to communicate with the `mongo` and `redis` services.
 
 ### Application configuration
 
@@ -398,7 +398,7 @@ RATE_LIMIT_ENABLED=false
 RATE_LIMIT_FAIL_OPEN=true
 ```
 
-Docker Compose enables rate limiting for the API and worker environment.
+Docker Compose enables rate limiting for its API and worker environments.
 
 When `RATE_LIMIT_FAIL_OPEN` is enabled, requests are allowed if Redis is temporarily unavailable.
 
@@ -428,7 +428,7 @@ ACCESS_TOKEN_MINUTES=15
 REFRESH_TOKEN_DAYS=30
 ```
 
-The example JWT secret is intended only for local development. Replace it with a long, random secret for any deployed environment.
+The example JWT secret is intended only for local development. Replace it with a long, randomly generated secret for any deployed environment.
 
 ### Frontend configuration
 
@@ -440,11 +440,11 @@ VITE_API_BASE_URL="http://localhost:8000"
 
 Do not commit `backend/.env` or any real API keys, access tokens, passwords, or production secrets.
 
-Only the `.env.example` template should be committed.
+Only the `.env.example` templates should be committed.
 
 ## Local Development
 
-The recommended local-development setup runs MongoDB and Redis through Docker while running the API, worker, and frontend directly on your machine.
+The recommended local-development setup runs MongoDB and Redis through Docker while the API, worker, and frontend run directly on your machine.
 
 ### 1. Start MongoDB and Redis
 
@@ -468,12 +468,14 @@ Windows PowerShell:
 Copy-Item backend/.env.example backend/.env
 ```
 
-Make sure `backend/.env` uses host-accessible URLs:
+The example file already uses host-accessible URLs:
 
 ```env
 MONGODB_URL="mongodb://localhost:27017"
 REDIS_URL="redis://localhost:6379/0"
 ```
+
+Docker Compose overrides these values when the API and worker run inside containers.
 
 ### 3. Install backend dependencies
 
@@ -558,6 +560,25 @@ cd frontend
 npm run build
 ```
 
+## Testing Automatic Token Refresh
+
+To test automatic access-token renewal:
+
+1. Sign in to the application.
+2. Open the browser developer tools.
+3. Open the Application tab and inspect Local Storage for `http://localhost:5173`.
+4. Confirm that both of these entries exist:
+
+   * `workflow_builder_access_token`
+   * `workflow_builder_refresh_token`
+5. Replace only the access-token value with an invalid value.
+6. Leave the refresh token unchanged.
+7. Reload a protected page.
+8. Open the Network tab and confirm that `POST /api/auth/refresh` succeeds.
+9. Confirm that the original protected request is retried successfully.
+
+Do not share token values from browser storage or network responses.
+
 ## Testing Delayed Workflows
 
 To test delayed execution from end to end:
@@ -629,10 +650,13 @@ Frontend visibility rules improve the user experience but do not replace server-
 
 ### Token Refresh
 
-The frontend stores the access and refresh tokens returned during authentication. When an authenticated API request receives a `401` response, the client uses the refresh token to request a new token pair and retries the original request once.
+The frontend stores the access and refresh tokens returned during authentication.
 
-Concurrent failed requests share the same refresh operation to avoid sending multiple refresh requests at the same time. If token refresh fails, the stored authentication tokens are cleared and the user must sign in again.
+When an authenticated API request receives a `401` response, the client uses the refresh token to request a new token pair and retries the original request once.
 
+Concurrent failed requests share the same refresh operation to avoid sending multiple refresh requests simultaneously.
+
+If token refresh fails, the stored authentication tokens are cleared and the user must sign in again.
 
 ### Rate Limiting
 
@@ -653,7 +677,9 @@ This prevents the frontend from loading an organization’s complete execution h
 ## Known Limitations
 
 * AI drafting and analysis are best-effort and may require manual review.
-* Rate limiting uses a fixed-window counter rather than a sliding-window algorithm.
+* Authentication tokens are stored in browser local storage. A production-oriented design could instead use an HttpOnly, Secure, SameSite refresh-token cookie.
+* Rate limiting uses a fixed-window counter rather than a sliding-window or token-bucket algorithm.
+* IP-based rate limiting uses the directly connected client address and requires trusted proxy-header configuration when deployed behind a reverse proxy.
 * Scheduled jobs use MongoDB polling rather than a dedicated message broker.
 * Workflow search is client-side because workflows are loaded per organization.
 * Runs and approval tasks use backend pagination.
@@ -663,12 +689,13 @@ This prevents the frontend from loading an organization’s complete execution h
 ## Security Notes
 
 * Never commit `backend/.env`.
-* Never commit real API keys, passwords, or access tokens.
+* Never commit real API keys, passwords, access tokens, or refresh tokens.
 * Replace the example JWT secret before deployment.
 * Use a strong, randomly generated production JWT secret.
 * Restrict production CORS origins.
 * Use restricted database credentials in production.
 * Do not expose MongoDB or Redis publicly.
+* Configure trusted proxy headers before relying on client IP addresses behind a reverse proxy.
 * Use TLS for deployed services.
 * Review AI-generated workflow graphs before saving or activating them.
 * Treat the provided Docker Compose configuration as a local-development setup.
@@ -677,6 +704,7 @@ This prevents the frontend from loading an organization’s complete execution h
 
 * GitHub Actions continuous integration
 * Frontend component and integration tests
+* HttpOnly-cookie-based refresh-token storage
 * Sliding-window or token-bucket rate limiting
 * Message-broker-based delayed job processing
 * Workflow version management
