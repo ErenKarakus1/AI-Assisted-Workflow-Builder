@@ -1,6 +1,8 @@
 # AI-Assisted Workflow Builder
 
 [![CI](https://github.com/ErenKarakus1/AI-Assisted-Workflow-Builder/actions/workflows/ci.yml/badge.svg)](https://github.com/ErenKarakus1/AI-Assisted-Workflow-Builder/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
+![Node.js](https://img.shields.io/badge/Node.js-20%2B-green)
 
 A full-stack visual workflow automation platform for organization-based approval processes.
 
