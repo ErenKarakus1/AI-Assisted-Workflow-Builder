@@ -67,6 +67,7 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 * Optional AI-assisted workflow drafting and analysis
 * Dockerized local setup
 * 61 passing backend tests
+* Reusable workflow templates
 
 ## How It Works
 
