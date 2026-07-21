@@ -242,11 +242,26 @@ VITE_API_BASE_URL="http://localhost:8000"
 
 ## Local Development
 
+Local development runs the frontend, API, and scheduler directly on your machine while MongoDB and Redis run through Docker.
+
+Start MongoDB and Redis:
+
+```powershell
+docker compose up -d mongo redis
+```
+
 Install backend dependencies:
 
 ```powershell
 cd backend
 python -m pip install -e ".[dev]"
+```
+
+Make sure the backend uses local service addresses:
+
+```env
+MONGODB_URL="mongodb://localhost:27017"
+REDIS_URL="redis://localhost:6379/0"
 ```
 
 Run the backend API:
@@ -255,20 +270,43 @@ Run the backend API:
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Run background processing in another terminal:
+Run background processing in a separate terminal:
 
 ```powershell
 cd backend
 python -m app.workers.scheduler
 ```
 
-Run the frontend:
+Run the frontend in another terminal:
 
 ```powershell
 cd frontend
 npm install
 npm run dev
 ```
+
+Local URLs:
+
+* Frontend: http://localhost:5173
+* Backend API: http://localhost:8000
+* Health check: http://localhost:8000/api/health
+
+Run backend tests:
+
+```powershell
+cd backend
+python -m pytest tests
+```
+
+Build the frontend:
+
+```powershell
+cd frontend
+npm run build
+```
+
+When the API and scheduler are run inside Docker Compose, they use Docker service hostnames such as `mongo` and `redis`. When they are run directly on your machine, they must use `localhost`.
+
 
 ## Tests
 
