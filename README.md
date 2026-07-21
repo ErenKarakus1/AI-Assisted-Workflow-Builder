@@ -23,9 +23,9 @@ A visual workflow builder for organization-based approval processes. Users can c
 
 ```mermaid
 flowchart LR
-    User[User] --> Nginx[React Frontend<br/>Nginx Container]
+    User[User] --> Frontend[React Frontend]
 
-    Nginx -->|API Request| API[FastAPI Backend]
+    Frontend -->|API Request| API[FastAPI Backend]
 
     subgraph Backend[FastAPI Application]
         API --> RateLimit[Rate-Limiting Middleware]
