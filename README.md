@@ -1,6 +1,9 @@
 # AI-Assisted Workflow Builder
 
 [![CI](https://github.com/ErenKarakus1/AI-Assisted-Workflow-Builder/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ErenKarakus1/AI-Assisted-Workflow-Builder/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-61%20passing-brightgreen?style=flat)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
+
 ![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat)
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=flat)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat)
@@ -9,8 +12,6 @@
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat)
 ![Docker](https://img.shields.io/badge/Docker-supported-2496ED?style=flat)
 ![OpenAI](https://img.shields.io/badge/OpenAI-optional%20AI%20integration-412991?style=flat)
-![Tests](https://img.shields.io/badge/tests-61%20passing-brightgreen?style=flat)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
 
 A full-stack visual workflow automation platform for organization-based approval processes.
 
