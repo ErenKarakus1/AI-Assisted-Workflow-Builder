@@ -36,6 +36,7 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 
 * Visual drag-and-drop workflow editor
 * Access-token and refresh-token authentication
+* Automatic access-token renewal and authenticated-request retry
 * Organization-based access control
 * Owner, admin, and member roles
 * Workflow draft creation and editing
@@ -625,6 +626,13 @@ The worker claims due jobs using conditional database updates before processing 
 Authorization for workflow management and task decisions is enforced by the backend.
 
 Frontend visibility rules improve the user experience but do not replace server-side permission checks.
+
+### Token Refresh
+
+The frontend stores the access and refresh tokens returned during authentication. When an authenticated API request receives a `401` response, the client uses the refresh token to request a new token pair and retries the original request once.
+
+Concurrent failed requests share the same refresh operation to avoid sending multiple refresh requests at the same time. If token refresh fails, the stored authentication tokens are cleared and the user must sign in again.
+
 
 ### Rate Limiting
 
