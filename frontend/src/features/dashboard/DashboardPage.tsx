@@ -6,7 +6,7 @@ import { getDashboardStats, listOrganizations } from "../../api/organizations";
 import { listTasks } from "../../api/tasks";
 import { listWorkflows } from "../../api/workflows";
 import type { Organization, Task, Workflow, WorkflowInstance } from "../../types/api";
-import { useAuth } from "../auth/AuthProvider";
+import { useAuth } from "../auth/AuthContext";
 
 export function DashboardPage() {
   const { user } = useAuth();

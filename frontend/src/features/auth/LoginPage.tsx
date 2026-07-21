@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 
 import { loginUser, type LoginPayload } from "../../api/auth";
 import { errorMessage } from "../../lib/errors";
-import { useAuth } from "./AuthProvider";
+import { useAuth } from "./AuthContext";
 
 export function LoginPage() {
   const navigate = useNavigate();

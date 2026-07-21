@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 
 import { loginUser, registerUser, type RegisterPayload } from "../../api/auth";
 import { errorMessage } from "../../lib/errors";
-import { useAuth } from "./AuthProvider";
+import { useAuth } from "./AuthContext";
 
 export function RegisterPage() {
   const navigate = useNavigate();

@@ -7,7 +7,7 @@ import { approveTask, listTasks, rejectTask } from "../../api/tasks";
 import { listWorkflows } from "../../api/workflows";
 import { errorMessage } from "../../lib/errors";
 import type { OrganizationMember, Task, TaskStatus, Workflow } from "../../types/api";
-import { useAuth } from "../auth/AuthProvider";
+import { useAuth } from "../auth/AuthContext";
 
 type TaskStatusFilter = "all" | TaskStatus;
 type TaskAssignmentFilter = "all" | "actionable" | "user" | "role" | "oversight";

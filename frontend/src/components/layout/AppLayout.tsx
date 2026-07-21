@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
-import { useAuth } from "../../features/auth/AuthProvider";
+import { useAuth } from "../../features/auth/AuthContext";
 
 export function AppLayout() {
   const navigate = useNavigate();
