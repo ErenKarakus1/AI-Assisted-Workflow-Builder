@@ -1,6 +1,7 @@
 import asyncio
 
-from app.db.mongo import get_database
+from app.core.config import settings
+from app.db.mongo import close_database, ensure_indexes, get_database
 from app.domain.instances.repository import MongoInstanceEventRepository, MongoWorkflowInstanceRepository
 from app.domain.scheduling.repository import MongoScheduledJobRepository
 from app.domain.scheduling.service import SchedulerService
@@ -17,6 +18,23 @@ async def run_once() -> int:
     ).process_due_jobs()
 
 
+async def run_forever() -> None:
+    await ensure_indexes()
+    database = get_database()
+    service = SchedulerService(
+        jobs=MongoScheduledJobRepository(database),
+        workflows=MongoWorkflowRepository(database),
+        instances=MongoWorkflowInstanceRepository(database),
+        events=MongoInstanceEventRepository(database),
+    )
+
+    try:
+        while True:
+            await service.process_due_jobs()
+            await asyncio.sleep(settings.scheduler_poll_seconds)
+    finally:
+        await close_database()
+
+
 if __name__ == "__main__":
-    processed = asyncio.run(run_once())
-    print(f"Processed {processed} scheduled jobs")
+    asyncio.run(run_forever())

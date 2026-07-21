@@ -21,6 +21,24 @@ services:
       timeout: 5s
       retries: 5
 
+  worker:
+    build:
+      context: ./backend
+    command: ["python", "-m", "app.workers.scheduler"]
+    env_file:
+      - ./backend/.env.example
+    environment:
+      MONGODB_URL: "mongodb://mongo:27017"
+      REDIS_URL: "redis://redis:6379/0"
+      RATE_LIMIT_ENABLED: "true"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
   web:
     build:
       context: ./frontend
