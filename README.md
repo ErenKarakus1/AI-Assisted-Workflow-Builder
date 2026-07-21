@@ -8,6 +8,7 @@
 ![MongoDB](https://img.shields.io/badge/MongoDB-7-47A248?style=flat)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat)
 ![Docker](https://img.shields.io/badge/Docker-supported-2496ED?style=flat)
+![OpenAI](https://img.shields.io/badge/OpenAI-optional%20AI%20integration-412991?style=flat)
 ![Tests](https://img.shields.io/badge/tests-61%20passing-brightgreen?style=flat)
 
 A full-stack visual workflow automation platform for organization-based approval processes.
