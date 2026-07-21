@@ -10,6 +10,7 @@
 ![Docker](https://img.shields.io/badge/Docker-supported-2496ED?style=flat)
 ![OpenAI](https://img.shields.io/badge/OpenAI-optional%20AI%20integration-412991?style=flat)
 ![Tests](https://img.shields.io/badge/tests-61%20passing-brightgreen?style=flat)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
 
 A full-stack visual workflow automation platform for organization-based approval processes.
 
