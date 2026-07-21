@@ -49,7 +49,7 @@ Task search runs on the backend, so it can find tasks that have not been loaded 
 
 ## AI Assistance
 
-AI support is optional. When `OPENAI_API_KEY` is configured, the workflow detail page can:
+AI support is optional. The workflow builder, validation, execution, approvals, runs, and audit history work without an OpenAI API key. When `OPENAI_API_KEY` is configured, the workflow detail page can:
 
 - draft a graph from a natural-language prompt
 - use the current graph as a starting point
