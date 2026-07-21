@@ -1,5 +1,7 @@
 # AI-Assisted Workflow Builder
 
+[![CI](https://github.com/ErenKarakus1/AI-Assisted-Workflow-Builder/actions/workflows/ci.yml/badge.svg)](https://github.com/ErenKarakus1/AI-Assisted-Workflow-Builder/actions/workflows/ci.yml)
+
 A full-stack visual workflow automation platform for organization-based approval processes.
 
 Users can design workflows with start, condition, approval, delay, and end nodes; validate and activate workflow drafts; run workflow instances; complete assigned approval tasks; inspect execution history; and optionally use AI to draft or analyze workflow graphs.
