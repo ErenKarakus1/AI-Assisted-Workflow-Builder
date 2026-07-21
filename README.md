@@ -6,7 +6,7 @@
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat&logo=fastapi&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-backend-3776AB?style=flat&logo=python&logoColor=white)
-![React](https://img.shields.io/badge/React-frontend-61DAFB?style=flat&logo=react&logoColor=black)
+![React](https://img.shields.io/badge/React-frontend-61DAFB?style=flat&logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-frontend-3178C6?style=flat&logo=typescript&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-database-47A248?style=flat&logo=mongodb&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-rate%20limiting-DC382D?style=flat&logo=redis&logoColor=white)
