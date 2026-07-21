@@ -50,9 +50,8 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 * Visual workflow editor
 * Organization-based access control
 * Owner, admin, and member roles
-* Access-token and refresh-token authentication
-* Automatic access-token renewal and authenticated-request retry
 * Workflow draft creation and editing
+* Reusable workflow templates
 * Deterministic workflow graph validation
 * Workflow activation and inactivation
 * Workflow instance execution
@@ -61,13 +60,10 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 * Background scheduler worker
 * Workflow graph snapshots
 * Execution and audit event timelines
-* Paginated workflow runs and approval tasks
-* Backend task search
 * Redis-backed rate limiting
 * Optional AI-assisted workflow drafting and analysis
 * Dockerized local setup
 * 61 passing backend tests
-* Reusable workflow templates
 
 ## How It Works
 
