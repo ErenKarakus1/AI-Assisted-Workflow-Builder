@@ -1,113 +1,121 @@
 # AI-Assisted Workflow Builder
 
-A visual workflow automation platform for multi-organization approval processes, with deterministic workflow execution and optional AI-assisted documentation and review.
+A visual workflow builder for organization-based approval processes. Users can create workflows with start, approval, condition, delay, and end nodes; validate and activate drafts; run workflow instances; review approval tasks; inspect event history; and optionally draft/analyze workflow graphs with AI.
 
-## Planned Stack
+## Stack
 
-- Backend: FastAPI, Pydantic, MongoDB, Redis, background workers, Pytest
-- Frontend: React, TypeScript, React Flow, TanStack Query, React Hook Form
-- Infrastructure: Docker Compose
+- Backend: FastAPI, Pydantic, MongoDB, Redis, Pytest
+- Frontend: React, TypeScript, React Flow, TanStack Query
+- Runtime: Docker Compose
 
-## Core Ideas
+## Features
 
-- Visual workflows made from start, approval, condition, delay, and end nodes
-- Deterministic validation before activation
-- Append-only instance events for auditability
-- Approval tasks with concurrency-safe decisions
-- Delay handling through scheduled background jobs
-- Optional AI features that explain and review workflows without executing them
+- Authentication with access/refresh tokens
+- Organizations with owner/admin/member roles
+- Workflow draft editing, validation, activation, inactivation, and deletion
+- Role/user-based approval tasks
+- Workflow instance runs with event timelines and graph snapshots
+- Delay nodes processed by the backend scheduler loop
+- Redis-backed rate limiting for auth, write actions, task decisions, instance starts, and AI calls
+- Optional AI workflow drafting and graph analysis
 
 ## Project Structure
 
 ```text
 backend/
   app/
-    api/          FastAPI routes
-    core/         Configuration, security, shared app setup
-    db/           Database connections and persistence helpers
-    domain/       Business logic modules
-    engine/       Workflow execution engine and node handlers
-    models/       Database models
-    schemas/      API schemas
-    services/     Application services
-    workers/      Background workers
-  tests/          Backend unit and integration tests
+    api/       FastAPI routes
+    core/      Configuration, security, rate limiting
+    db/        MongoDB setup and indexes
+    domain/    Business logic and repositories
+    engine/    Workflow execution engine
+    models/    Domain/database models
+    schemas/   API schemas
+    workers/   Scheduler worker helpers
+  tests/       Backend tests
 
 frontend/
   src/
-    api/          API client code
-    app/          App shell and providers
-    components/   Shared UI components
-    features/     Feature-specific frontend modules
-    hooks/        Shared React hooks
-    lib/          Shared utilities
-    routes/       Route definitions
-    styles/       Global styles
-    types/        Shared TypeScript types
-  tests/          Frontend and end-to-end tests
-
-infra/
-  docker/         Docker-related configuration
-
-docs/
-  architecture/  Architecture notes
-  api/           API documentation
-
-scripts/         Developer and maintenance scripts
+    api/        API client functions
+    app/        App shell and routing
+    components/ Shared layout/components
+    features/   Feature pages and UI
+    lib/        Shared utilities
+    styles/     Global CSS
+    types/      API/shared TypeScript types
 ```
 
-## Status
+## Run with Docker
 
-Backend foundation in progress. Current backend features include authentication, organizations, workflow drafts, deterministic workflow validation, execution for start/condition/end nodes, approval tasks, delay scheduling, and a one-shot scheduler worker.
+```powershell
+docker compose up --build
+```
 
-## Backend Commands
+Then open:
 
-Install backend dependencies:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
+- Health check: http://localhost:8000/api/health
+
+Docker starts:
+
+- `web` - built React app served by nginx
+- `api` - FastAPI backend
+- `mongo` - MongoDB
+- `redis` - Redis for rate limiting
+
+## Environment
+
+Backend defaults live in `backend/.env.example`. Docker Compose uses that file and overrides service URLs for MongoDB and Redis.
+
+For AI features, set:
+
+```env
+OPENAI_API_KEY="your-key"
+OPENAI_MODEL="gpt-5.4-nano"
+```
+
+Rate limiting is enabled in Docker Compose:
+
+```env
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_FAIL_OPEN=true
+```
+
+For local frontend development, `frontend/.env.example` contains:
+
+```env
+VITE_API_BASE_URL="http://localhost:8000"
+```
+
+## Local Development
+
+Backend:
 
 ```powershell
 cd backend
 python -m pip install -e ".[dev]"
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Run the API:
+Frontend:
 
 ```powershell
-.\scripts\run-api.ps1
+cd frontend
+npm install
+npm run dev
 ```
 
-Run backend tests:
+Backend tests:
 
 ```powershell
-.\scripts\test-backend.ps1
+cd backend
+python -m pytest
 ```
 
-Process due scheduled jobs once:
+Frontend build:
 
 ```powershell
-.\scripts\run-scheduler-once.ps1
+cd frontend
+npm run build
 ```
-
-## Backend API Snapshot
-
-- `GET /api/health`
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/refresh`
-- `GET /api/auth/me`
-- `POST /api/orgs`
-- `GET /api/orgs`
-- `GET /api/orgs/{organization_id}`
-- `POST /api/orgs/{organization_id}/workflows`
-- `GET /api/orgs/{organization_id}/workflows`
-- `GET /api/orgs/{organization_id}/workflows/{workflow_id}`
-- `PUT /api/orgs/{organization_id}/workflows/{workflow_id}`
-- `DELETE /api/orgs/{organization_id}/workflows/{workflow_id}`
-- `POST /api/orgs/{organization_id}/workflows/{workflow_id}/validate`
-- `POST /api/orgs/{organization_id}/workflows/{workflow_id}/activate`
-- `POST /api/orgs/{organization_id}/workflows/{workflow_id}/instances`
-- `GET /api/orgs/{organization_id}/instances/{instance_id}`
-- `GET /api/orgs/{organization_id}/instances/{instance_id}/events`
-- `GET /api/orgs/{organization_id}/tasks`
-- `GET /api/orgs/{organization_id}/tasks/{task_id}`
-- `POST /api/orgs/{organization_id}/tasks/{task_id}/approve`
-- `POST /api/orgs/{organization_id}/tasks/{task_id}/reject`
