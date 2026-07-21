@@ -47,11 +47,11 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 
 ## Features
 
-* Visual drag-and-drop workflow editor
-* Access-token and refresh-token authentication
-* Automatic access-token renewal and authenticated-request retry
+* Visual workflow editor
 * Organization-based access control
 * Owner, admin, and member roles
+* Access-token and refresh-token authentication
+* Automatic access-token renewal and authenticated-request retry
 * Workflow draft creation and editing
 * Deterministic workflow graph validation
 * Workflow activation and inactivation
@@ -73,10 +73,10 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 Workflows are built from five node types:
 
 * `start` — begins the workflow
-* `condition` — chooses a path based on workflow input or execution context
+* `condition` — chooses a path based on workflow input context
 * `approval` — pauses execution until an authorized user approves or rejects
 * `delay` — pauses execution for a configured duration
-* `end` — completes the workflow instance with a result
+* `end` — completes the workflow instance with a results
 
 A workflow begins as a draft. Draft workflows can be edited and validated before activation.
 
@@ -249,6 +249,7 @@ frontend/
     components/   Shared layout and UI components
     features/     Feature pages and workflow UI
     lib/          Shared utilities
+    routes/       Protected routing
     styles/       Global styles
     types/        API and shared TypeScript types
 ```
@@ -263,7 +264,7 @@ frontend/
 ### Local Development
 
 * Python 3.12 or newer
-* Node.js
+* Node.js 22 or newer
 * npm
 * Docker, or locally installed MongoDB and Redis
 
