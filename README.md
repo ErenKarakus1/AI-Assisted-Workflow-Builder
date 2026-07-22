@@ -32,7 +32,7 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 - [Requirements](#requirements)
 - [Run with Docker](#run-with-docker)
 - [Environment Configuration](#environment-configuration)
-- [Local Development](#local-development)
+- [Local Development](#local-development-1)
 - [Tests and Checks](#tests-and-checks)
 - [Design Decisions](#design-decisions)
 - [Known Limitations](#known-limitations)
