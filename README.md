@@ -17,6 +17,29 @@ A full-stack visual workflow automation platform for organization-based approval
 
 Users can design workflows with start, condition, approval, delay, and end nodes; validate and activate workflow drafts; run workflow instances; complete assigned approval tasks; inspect execution history; and optionally use AI to draft or analyze workflow graphs.
 
+## Table of Contents
+
+- [Tech Stack](#tech-stack)
+- [Features](#features)
+- [How It Works](#how-it-works)
+- [Workflow Validation](#workflow-validation)
+- [Organizations and Permissions](#organizations-and-permissions)
+- [Workflow Runs and Tasks](#workflow-runs-and-tasks)
+- [Delayed Execution](#delayed-execution)
+- [AI Assistance](#ai-assistance)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Requirements](#requirements)
+- [Run with Docker](#run-with-docker)
+- [Environment Configuration](#environment-configuration)
+- [Local Development](#local-development)
+- [Tests and Checks](#tests-and-checks)
+- [Design Decisions](#design-decisions)
+- [Known Limitations](#known-limitations)
+- [Security Notes](#security-notes)
+- [Possible Future Improvements](#possible-future-improvements)
+- [License](#license)
+
 ## Tech Stack
 
 ### Backend
