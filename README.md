@@ -17,8 +17,13 @@ A full-stack visual workflow automation platform for building and running organi
 
 Users can design workflows with start, condition, approval, delay, and end nodes; validate and activate workflow drafts; run workflow instances; complete assigned approval tasks; inspect execution history; and optionally use AI to draft or analyze workflow graphs.
 
+## Demo
+
+[![Watch the project demo](https://img.youtube.com/vi/j4gvn9GqDJk/maxresdefault.jpg)](https://youtu.be/j4gvn9GqDJk)
+
 ## Table of Contents
 
+- [Demo](#demo)
 - [Tech Stack](#tech-stack)
 - [Features](#features)
 - [How It Works](#how-it-works)
