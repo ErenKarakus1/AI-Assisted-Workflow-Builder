@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -34,7 +34,6 @@ export function WorkflowDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const graphSectionRef = useRef<HTMLDivElement | null>(null);
   const [instanceInput, setInstanceInput] = useState("{}");
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
   const [instanceStatusFilter, setInstanceStatusFilter] = useState<InstanceStatusFilter>("all");
@@ -524,7 +523,7 @@ export function WorkflowDetailPage() {
             </p>
           ) : null}
 
-          <div ref={graphSectionRef}>
+          <div>
             <WorkflowGraphEditor
               key={
                 selectedInstance
