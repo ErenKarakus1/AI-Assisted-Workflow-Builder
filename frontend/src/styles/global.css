@@ -757,6 +757,17 @@ textarea {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  width: 100%;
+}
+
+.duration-fields label {
+  min-width: 0;
+}
+
+.duration-fields input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .config-stack h3 {
