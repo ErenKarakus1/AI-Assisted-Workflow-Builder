@@ -13,7 +13,7 @@
 ![Docker](https://img.shields.io/badge/Docker-infrastructure-2496ED?style=flat&logo=docker&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI-optional%20AI%20integration-412991?style=flat)
 
-A full-stack visual workflow automation platform for organization-based approval processes.
+A full-stack visual workflow automation platform for building and running organization-based approval processes.
 
 Users can design workflows with start, condition, approval, delay, and end nodes; validate and activate workflow drafts; run workflow instances; complete assigned approval tasks; inspect execution history; and optionally use AI to draft or analyze workflow graphs.
 
