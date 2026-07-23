@@ -199,11 +199,8 @@ export function WorkflowDetailPage() {
     [setSearchParams],
   );
   const viewCurrentGraph = useCallback(() => {
-    selectInstance(null);
-    window.requestAnimationFrame(() => {
-      graphSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, [selectInstance]);
+  window.location.href = window.location.pathname;
+}, []);
 
   useEffect(() => {
     const instanceId = searchParams.get("instance");
@@ -247,28 +244,30 @@ export function WorkflowDetailPage() {
     aiStatusQuery.data?.configured !== false &&
     aiPrompt.trim().length >= 8;
   const copySelectedSnapshotToDraft = useCallback(() => {
-    if (!selectedInstance || !hasInstanceGraphSnapshot) {
-      return;
-    }
+  if (!selectedInstance || !hasInstanceGraphSnapshot) {
+    return;
+  }
 
-    if (
-      !window.confirm(
-        "Copy this instance graph snapshot to the current draft? This will replace the current draft graph.",
-      )
-    ) {
-      return;
-    }
+  if (
+    !window.confirm(
+      "Copy this instance graph snapshot to the current draft? This will replace the current draft graph.",
+    )
+  ) {
+    return;
+  }
 
-    saveMutation.mutate(
-      {
-        nodes: selectedInstance.workflow_nodes,
-        edges: selectedInstance.workflow_edges,
+  saveMutation.mutate(
+    {
+      nodes: selectedInstance.workflow_nodes,
+      edges: selectedInstance.workflow_edges,
+    },
+    {
+      onSuccess: () => {
+        window.location.href = window.location.pathname;
       },
-      {
-        onSuccess: () => selectInstance(null),
-      },
-    );
-  }, [hasInstanceGraphSnapshot, saveMutation, selectInstance, selectedInstance]);
+    },
+  );
+}, [hasInstanceGraphSnapshot, saveMutation, selectedInstance]);
 
   return (
     <section className="page-stack">
