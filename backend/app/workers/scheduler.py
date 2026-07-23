@@ -2,7 +2,10 @@ import asyncio
 
 from app.core.config import settings
 from app.db.mongo import close_database, ensure_indexes, get_database
-from app.domain.instances.repository import MongoInstanceEventRepository, MongoWorkflowInstanceRepository
+from app.domain.instances.repository import (
+    MongoInstanceEventRepository,
+    MongoWorkflowInstanceRepository,
+)
 from app.domain.scheduling.repository import MongoScheduledJobRepository
 from app.domain.scheduling.service import SchedulerService
 from app.domain.workflows.repository import MongoWorkflowRepository

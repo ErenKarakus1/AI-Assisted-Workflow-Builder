@@ -7,13 +7,13 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.security import decode_token
 from app.db.mongo import database_dependency
+from app.domain.auth.repository import MongoUserRepository, UserRepository
 from app.domain.instances.repository import (
     InstanceEventRepository,
     MongoInstanceEventRepository,
     MongoWorkflowInstanceRepository,
     WorkflowInstanceRepository,
 )
-from app.domain.auth.repository import MongoUserRepository, UserRepository
 from app.domain.orgs.repository import (
     MongoOrganizationMemberRepository,
     MongoOrganizationRepository,

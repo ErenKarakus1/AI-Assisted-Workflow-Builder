@@ -5,7 +5,12 @@ from app.engine.handlers.base import HandlerResult, NodeHandler
 from app.engine.handlers.condition import ConditionNodeHandler
 from app.engine.handlers.end import EndNodeHandler
 from app.engine.handlers.start import StartNodeHandler
-from app.models.instance import InstanceEvent, InstanceEventType, WorkflowInstance, WorkflowInstanceStatus
+from app.models.instance import (
+    InstanceEvent,
+    InstanceEventType,
+    WorkflowInstance,
+    WorkflowInstanceStatus,
+)
 from app.models.scheduled_job import ScheduledJob, ScheduledJobType
 from app.models.task import Task
 from app.models.workflow import Workflow, WorkflowEdge, WorkflowNode
@@ -127,7 +132,7 @@ class WorkflowEngine:
                     instance.active_node_id = result.next_node_id
 
                 instance.revision += 1
-        except Exception as exc:
+        except Exception as exc: # noqa: BLE001
             instance.status = WorkflowInstanceStatus.FAILED
             instance.active_node_id = None
             instance.revision += 1

@@ -2,7 +2,12 @@ from app.domain.auth.repository import UserRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
 from app.models.organization import Organization, OrganizationMember, OrganizationRole
 from app.models.user import User
-from app.schemas.organization import OrganizationCreate, OrganizationMemberCreate, OrganizationMemberRead, OrganizationRead
+from app.schemas.organization import (
+    OrganizationCreate,
+    OrganizationMemberCreate,
+    OrganizationMemberRead,
+    OrganizationRead,
+)
 
 
 class OrganizationNotFoundError(Exception):

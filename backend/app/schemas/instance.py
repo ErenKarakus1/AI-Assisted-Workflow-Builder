@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
 from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 from app.models.instance import InstanceEventType, WorkflowInstanceStatus
 from app.models.workflow import WorkflowEdge, WorkflowNode

@@ -13,7 +13,11 @@ from app.domain.orgs.repository import OrganizationMemberRepository, Organizatio
 from app.domain.workflows.repository import WorkflowRepository
 from app.main import create_app
 from app.models.workflow import Workflow, WorkflowEdge, WorkflowNode
-from app.schemas.workflow import WorkflowAIAnalyzeResponse, WorkflowAIGenerateResponse, WorkflowValidationResult
+from app.schemas.workflow import (
+    WorkflowAIAnalyzeResponse,
+    WorkflowAIGenerateResponse,
+    WorkflowValidationResult,
+)
 from tests.fakes import (
     InMemoryOrganizationMemberRepository,
     InMemoryOrganizationRepository,

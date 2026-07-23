@@ -50,7 +50,7 @@ class SchedulerService:
                 job.revision += 1
                 await self.jobs.update(job)
                 completed_count += 1
-            except Exception:
+            except Exception: # noqa: BLE001
                 job.status = ScheduledJobStatus.FAILED
                 job.revision += 1
                 await self.jobs.update(job)

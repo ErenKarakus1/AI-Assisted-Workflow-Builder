@@ -7,6 +7,7 @@ from app.api.dependencies import (
     organization_member_repository_dependency,
     workflow_repository_dependency,
 )
+from app.core.config import settings
 from app.core.rate_limit import rate_limit
 from app.domain.orgs.repository import OrganizationMemberRepository
 from app.domain.orgs.service import OrganizationAccessDeniedError
@@ -30,7 +31,6 @@ from app.schemas.workflow import (
     WorkflowUpdate,
     WorkflowValidationResult,
 )
-from app.core.config import settings
 
 router = APIRouter(prefix="/orgs/{organization_id}/workflows", tags=["workflows"])
 
