@@ -1,13 +1,27 @@
+x-backend-environment: &backend-environment
+  APP_NAME: "AI-Assisted Workflow Builder API"
+  APP_VERSION: "0.1.0"
+  ENVIRONMENT: "development"
+  CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
+  MONGODB_URL: "mongodb://mongo:27017"
+  MONGODB_DATABASE: "workflow_builder"
+  REDIS_URL: "redis://redis:6379/0"
+  RATE_LIMIT_ENABLED: "true"
+  RATE_LIMIT_FAIL_OPEN: "true"
+  SCHEDULER_POLL_SECONDS: "1"
+  OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+  OPENAI_MODEL: "${OPENAI_MODEL:-gpt-5.4-nano}"
+  JWT_SECRET_KEY: "${JWT_SECRET_KEY:-change-me-in-production-with-a-long-random-secret}"
+  JWT_ALGORITHM: "HS256"
+  ACCESS_TOKEN_MINUTES: "15"
+  REFRESH_TOKEN_DAYS: "30"
+
 services:
   api:
     build:
       context: ./backend
-    env_file:
-      - ./backend/.env
     environment:
-      MONGODB_URL: "mongodb://mongo:27017"
-      REDIS_URL: "redis://redis:6379/0"
-      RATE_LIMIT_ENABLED: "true"
+      <<: *backend-environment
     ports:
       - "8000:8000"
     depends_on:
@@ -25,12 +39,8 @@ services:
     build:
       context: ./backend
     command: ["python", "-m", "app.workers.scheduler"]
-    env_file:
-      - ./backend/.env
     environment:
-      MONGODB_URL: "mongodb://mongo:27017"
-      REDIS_URL: "redis://redis:6379/0"
-      RATE_LIMIT_ENABLED: "true"
+      <<: *backend-environment
     depends_on:
       mongo:
         condition: service_healthy

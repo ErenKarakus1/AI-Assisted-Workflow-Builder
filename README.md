@@ -302,25 +302,21 @@ git clone https://github.com/ErenKarakus1/AI-Assisted-Workflow-Builder.git
 cd AI-Assisted-Workflow-Builder
 ```
 
-### 2. Create the backend environment file
+### 2. Optional: enable AI features
 
-Copy the provided example configuration.
+The app works without an OpenAI API key. If no key is configured, AI drafting and analysis are disabled while the rest of the workflow builder still works.
 
-Linux and macOS:
+For Docker, set the key in your shell or in a root-level `.env` file before starting Compose:
 
-```bash
-cp backend/.env.example backend/.env
+```env
+OPENAI_API_KEY="your-api-key"
 ```
 
-Windows PowerShell:
+You can also override the model:
 
-```powershell
-Copy-Item backend/.env.example backend/.env
+```env
+OPENAI_MODEL="gpt-5.4-nano"
 ```
-
-Review `backend/.env` and update any values you want to customize.
-
-A valid OpenAI API key is required only for the optional AI features.
 
 ### 3. Start the application
 
@@ -372,9 +368,9 @@ Create your local configuration at:
 backend/.env
 ```
 
-Docker Compose loads `backend/.env` for both the API and scheduler worker.
+`backend/.env` is used when running the backend or scheduler worker directly on your machine.
 
-The Compose configuration overrides `MONGODB_URL` and `REDIS_URL` with Docker service hostnames, allowing the containers to communicate with the `mongo` and `redis` services.
+Docker Compose does not load `backend/.env`. It sets container-safe defaults directly in `docker-compose.yml`, including Docker service hostnames for MongoDB and Redis. This keeps local backend secrets from being accidentally printed by Docker Compose commands.
 
 #### Application configuration
 
@@ -434,6 +430,8 @@ OPENAI_MODEL="gpt-5.4-nano"
 ```
 
 Leave `OPENAI_API_KEY` empty when AI features are not needed.
+
+For Docker Compose, provide `OPENAI_API_KEY` through your shell environment or a root-level `.env` file. Do not put real secrets directly in `docker-compose.yml`.
 
 #### Authentication configuration
 
@@ -497,7 +495,7 @@ MONGODB_URL="mongodb://localhost:27017"
 REDIS_URL="redis://localhost:6379/0"
 ```
 
-Docker Compose overrides these values when the API and worker run inside containers.
+Docker Compose uses container-safe defaults when the API and worker run inside containers.
 
 ### 3. Install backend dependencies
 
