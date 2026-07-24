@@ -178,7 +178,10 @@ export function WorkflowDetailPage() {
     });
   }, [resetValidate, resetValidateDraft]);
   const handleGraphChange = useCallback((nodes: WorkflowNode[], edges: WorkflowEdge[]) => {
-    setCurrentGraph({ nodes, edges });
+    setCurrentGraph((current) => {
+      const next = { nodes, edges };
+      return current && graphSnapshotFingerprint(current) === graphSnapshotFingerprint(next) ? current : next;
+    });
   }, []);
 
   const workflow = workflowQuery.data;
@@ -969,6 +972,10 @@ function parseJsonObject(value: string): Record<string, unknown> {
     throw new Error("Input must be a JSON object");
   }
   return parsed as Record<string, unknown>;
+}
+
+function graphSnapshotFingerprint(graph: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }): string {
+  return JSON.stringify(graph);
 }
 
 function parseJsonObjectError(value: string): string | null {

@@ -82,10 +82,15 @@ export function WorkflowGraphEditor({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const onDirtyChangeRef = useRef(onDirtyChange);
+  const onGraphChangeRef = useRef(onGraphChange);
 
   useEffect(() => {
     onDirtyChangeRef.current = onDirtyChange;
   }, [onDirtyChange]);
+
+  useEffect(() => {
+    onGraphChangeRef.current = onGraphChange;
+  }, [onGraphChange]);
 
   useEffect(() => {
     setNodes(initialNodes);
@@ -98,11 +103,16 @@ export function WorkflowGraphEditor({
   useEffect(() => {
     const workflowNodes = nodes.map(toWorkflowNode);
     const workflowEdges = edges.map(toWorkflowEdge);
-    onGraphChange?.(workflowNodes, workflowEdges);
-    onDirtyChange(
+    onGraphChangeRef.current?.(workflowNodes, workflowEdges);
+    onDirtyChangeRef.current(
       graphFingerprint(workflowNodes, workflowEdges) !== graphFingerprint(workflow.nodes, workflow.edges),
     );
-  }, [edges, nodes, onDirtyChange, onGraphChange, workflow.edges, workflow.nodes]);
+  }, [edges, nodes, workflow.edges, workflow.nodes]);
+
+  const flowNodes = useMemo(
+    () => nodes.map((node) => decorateProgressNode(node, progress)),
+    [nodes, progress],
+  );
 
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
   const selectedEdge = edges.find((edge) => edge.id === selectedEdgeId) ?? null;
@@ -274,7 +284,7 @@ export function WorkflowGraphEditor({
       <div className="editor-grid">
         <div className="flow-canvas">
           <ReactFlow
-            nodes={nodes.map((node) => decorateProgressNode(node, progress))}
+            nodes={flowNodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
