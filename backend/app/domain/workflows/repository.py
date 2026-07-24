@@ -34,6 +34,10 @@ class WorkflowRepository(ABC):
     async def delete(self, workflow_id: str) -> None:
         raise NotImplementedError
 
+    @abstractmethod
+    async def delete_by_organization(self, organization_id: str) -> None:
+        raise NotImplementedError
+
 
 class MongoWorkflowRepository(WorkflowRepository):
     def __init__(self, database: AsyncIOMotorDatabase) -> None:
@@ -68,3 +72,6 @@ class MongoWorkflowRepository(WorkflowRepository):
 
     async def delete(self, workflow_id: str) -> None:
         await self.collection.delete_one({"id": workflow_id})
+
+    async def delete_by_organization(self, organization_id: str) -> None:
+        await self.collection.delete_many({"organization_id": organization_id})

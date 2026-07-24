@@ -1,5 +1,9 @@
 from app.domain.auth.repository import UserRepository
+from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
+from app.domain.scheduling.repository import ScheduledJobRepository
+from app.domain.tasks.repository import TaskRepository
+from app.domain.workflows.repository import WorkflowRepository
 from app.models.organization import Organization, OrganizationMember, OrganizationRole
 from app.models.user import User
 from app.schemas.organization import (
@@ -138,7 +142,16 @@ class OrganizationService:
 
         await self.members.delete(member_id)
 
-    async def delete(self, organization_id: str, user: User) -> None:
+    async def delete(
+        self,
+        organization_id: str,
+        user: User,
+        workflows: WorkflowRepository,
+        instances: WorkflowInstanceRepository,
+        events: InstanceEventRepository,
+        tasks: TaskRepository,
+        jobs: ScheduledJobRepository,
+    ) -> None:
         membership = await self.members.get_by_user_and_org(user.id, organization_id)
         if not membership:
             raise OrganizationAccessDeniedError
@@ -149,6 +162,11 @@ class OrganizationService:
         if not organization:
             raise OrganizationNotFoundError
 
+        await jobs.delete_by_organization(organization_id)
+        await tasks.delete_by_organization(organization_id)
+        await events.delete_by_organization(organization_id)
+        await instances.delete_by_organization(organization_id)
+        await workflows.delete_by_organization(organization_id)
         await self.members.delete_by_organization(organization_id)
         await self.organizations.delete(organization_id)
 

@@ -42,6 +42,10 @@ class TaskRepository(ABC):
     async def update(self, task: Task) -> Task:
         raise NotImplementedError
 
+    @abstractmethod
+    async def delete_by_organization(self, organization_id: str) -> None:
+        raise NotImplementedError
+
 
 class MongoTaskRepository(TaskRepository):
     def __init__(self, database: AsyncIOMotorDatabase) -> None:
@@ -97,3 +101,6 @@ class MongoTaskRepository(TaskRepository):
     async def update(self, task: Task) -> Task:
         await self.collection.replace_one({"id": task.id}, task.model_dump())
         return task
+
+    async def delete_by_organization(self, organization_id: str) -> None:
+        await self.collection.delete_many({"organization_id": organization_id})

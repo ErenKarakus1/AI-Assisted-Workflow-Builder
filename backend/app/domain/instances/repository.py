@@ -41,6 +41,10 @@ class WorkflowInstanceRepository(ABC):
     async def update(self, instance: WorkflowInstance) -> WorkflowInstance:
         raise NotImplementedError
 
+    @abstractmethod
+    async def delete_by_organization(self, organization_id: str) -> None:
+        raise NotImplementedError
+
 
 class InstanceEventRepository(ABC):
     @abstractmethod
@@ -49,6 +53,10 @@ class InstanceEventRepository(ABC):
 
     @abstractmethod
     async def list_by_instance(self, instance_id: str) -> list[InstanceEvent]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def delete_by_organization(self, organization_id: str) -> None:
         raise NotImplementedError
 
 
@@ -101,6 +109,9 @@ class MongoWorkflowInstanceRepository(WorkflowInstanceRepository):
         await self.collection.replace_one({"id": instance.id}, instance.model_dump())
         return instance
 
+    async def delete_by_organization(self, organization_id: str) -> None:
+        await self.collection.delete_many({"organization_id": organization_id})
+
 
 class MongoInstanceEventRepository(InstanceEventRepository):
     def __init__(self, database: AsyncIOMotorDatabase) -> None:
@@ -114,3 +125,6 @@ class MongoInstanceEventRepository(InstanceEventRepository):
         cursor = self.collection.find({"instance_id": instance_id}).sort("created_at", 1)
         documents = await cursor.to_list(length=None)
         return [InstanceEvent(**document) for document in documents]
+
+    async def delete_by_organization(self, organization_id: str) -> None:
+        await self.collection.delete_many({"organization_id": organization_id})

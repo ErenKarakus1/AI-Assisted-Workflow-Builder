@@ -19,6 +19,10 @@ class ScheduledJobRepository(ABC):
     async def update(self, job: ScheduledJob) -> ScheduledJob:
         raise NotImplementedError
 
+    @abstractmethod
+    async def delete_by_organization(self, organization_id: str) -> None:
+        raise NotImplementedError
+
 
 class MongoScheduledJobRepository(ScheduledJobRepository):
     def __init__(self, database: AsyncIOMotorDatabase) -> None:
@@ -51,3 +55,6 @@ class MongoScheduledJobRepository(ScheduledJobRepository):
     async def update(self, job: ScheduledJob) -> ScheduledJob:
         await self.collection.replace_one({"id": job.id}, job.model_dump())
         return job
+
+    async def delete_by_organization(self, organization_id: str) -> None:
+        await self.collection.delete_many({"organization_id": organization_id})

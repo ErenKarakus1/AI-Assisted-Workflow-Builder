@@ -1,18 +1,38 @@
+from datetime import UTC, datetime
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import (
+    instance_event_repository_dependency,
     organization_member_repository_dependency,
     organization_repository_dependency,
+    scheduled_job_repository_dependency,
+    task_repository_dependency,
     user_repository_dependency,
+    workflow_instance_repository_dependency,
+    workflow_repository_dependency,
 )
 from app.domain.auth.repository import UserRepository
+from app.domain.instances.repository import InstanceEventRepository, WorkflowInstanceRepository
 from app.domain.orgs.repository import OrganizationMemberRepository, OrganizationRepository
+from app.domain.scheduling.repository import ScheduledJobRepository
+from app.domain.tasks.repository import TaskRepository
+from app.domain.workflows.repository import WorkflowRepository
 from app.main import create_app
+from app.models.instance import InstanceEvent, InstanceEventType, WorkflowInstance
+from app.models.scheduled_job import ScheduledJob, ScheduledJobType
+from app.models.task import Task
+from app.models.workflow import Workflow
 from tests.fakes import (
+    InMemoryInstanceEventRepository,
     InMemoryOrganizationMemberRepository,
     InMemoryOrganizationRepository,
+    InMemoryScheduledJobRepository,
+    InMemoryTaskRepository,
     InMemoryUserRepository,
+    InMemoryWorkflowInstanceRepository,
+    InMemoryWorkflowRepository,
 )
 
 
@@ -32,10 +52,40 @@ def member_repository() -> InMemoryOrganizationMemberRepository:
 
 
 @pytest.fixture
+def workflow_repository() -> InMemoryWorkflowRepository:
+    return InMemoryWorkflowRepository()
+
+
+@pytest.fixture
+def instance_repository() -> InMemoryWorkflowInstanceRepository:
+    return InMemoryWorkflowInstanceRepository()
+
+
+@pytest.fixture
+def event_repository() -> InMemoryInstanceEventRepository:
+    return InMemoryInstanceEventRepository()
+
+
+@pytest.fixture
+def task_repository() -> InMemoryTaskRepository:
+    return InMemoryTaskRepository()
+
+
+@pytest.fixture
+def scheduled_job_repository() -> InMemoryScheduledJobRepository:
+    return InMemoryScheduledJobRepository()
+
+
+@pytest.fixture
 def client(
     user_repository: InMemoryUserRepository,
     organization_repository: InMemoryOrganizationRepository,
     member_repository: InMemoryOrganizationMemberRepository,
+    workflow_repository: InMemoryWorkflowRepository,
+    instance_repository: InMemoryWorkflowInstanceRepository,
+    event_repository: InMemoryInstanceEventRepository,
+    task_repository: InMemoryTaskRepository,
+    scheduled_job_repository: InMemoryScheduledJobRepository,
 ) -> TestClient:
     app = create_app()
 
@@ -48,9 +98,29 @@ def client(
     async def override_member_repository() -> OrganizationMemberRepository:
         return member_repository
 
+    async def override_workflow_repository() -> WorkflowRepository:
+        return workflow_repository
+
+    async def override_instance_repository() -> WorkflowInstanceRepository:
+        return instance_repository
+
+    async def override_event_repository() -> InstanceEventRepository:
+        return event_repository
+
+    async def override_task_repository() -> TaskRepository:
+        return task_repository
+
+    async def override_scheduled_job_repository() -> ScheduledJobRepository:
+        return scheduled_job_repository
+
     app.dependency_overrides[user_repository_dependency] = override_user_repository
     app.dependency_overrides[organization_repository_dependency] = override_organization_repository
     app.dependency_overrides[organization_member_repository_dependency] = override_member_repository
+    app.dependency_overrides[workflow_repository_dependency] = override_workflow_repository
+    app.dependency_overrides[workflow_instance_repository_dependency] = override_instance_repository
+    app.dependency_overrides[instance_event_repository_dependency] = override_event_repository
+    app.dependency_overrides[task_repository_dependency] = override_task_repository
+    app.dependency_overrides[scheduled_job_repository_dependency] = override_scheduled_job_repository
     return TestClient(app)
 
 
@@ -307,6 +377,72 @@ def test_owner_can_delete_organization(client: TestClient) -> None:
 
     assert response.status_code == 204
     assert list_response.json() == []
+
+
+def test_delete_organization_removes_related_workflow_data(
+    client: TestClient,
+    workflow_repository: InMemoryWorkflowRepository,
+    instance_repository: InMemoryWorkflowInstanceRepository,
+    event_repository: InMemoryInstanceEventRepository,
+    task_repository: InMemoryTaskRepository,
+    scheduled_job_repository: InMemoryScheduledJobRepository,
+) -> None:
+    owner_token = register_and_login(client, "owner@example.com")
+    create_response = client.post(
+        "/api/orgs",
+        json={"name": "Cascade Delete Me"},
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+    organization_id = create_response.json()["id"]
+    workflow = Workflow(
+        organization_id=organization_id,
+        name="Purchase approval",
+        created_by_user_id="owner-user",
+    )
+    instance = WorkflowInstance(
+        organization_id=organization_id,
+        workflow_id=workflow.id,
+        workflow_revision=workflow.revision,
+        started_by_user_id="owner-user",
+    )
+    task = Task(
+        organization_id=organization_id,
+        workflow_id=workflow.id,
+        instance_id=instance.id,
+        node_id="approval-1",
+        assigned_role="owner",
+    )
+    event = InstanceEvent(
+        organization_id=organization_id,
+        workflow_id=workflow.id,
+        instance_id=instance.id,
+        type=InstanceEventType.INSTANCE_STARTED,
+    )
+    job = ScheduledJob(
+        organization_id=organization_id,
+        workflow_id=workflow.id,
+        instance_id=instance.id,
+        node_id="delay-1",
+        type=ScheduledJobType.DELAY,
+        run_at=datetime.now(UTC),
+    )
+    workflow_repository.workflows_by_id[workflow.id] = workflow
+    instance_repository.instances_by_id[instance.id] = instance
+    task_repository.tasks_by_id[task.id] = task
+    event_repository.events.append(event)
+    scheduled_job_repository.jobs_by_id[job.id] = job
+
+    response = client.delete(
+        f"/api/orgs/{organization_id}",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 204
+    assert workflow_repository.workflows_by_id == {}
+    assert instance_repository.instances_by_id == {}
+    assert task_repository.tasks_by_id == {}
+    assert event_repository.events == []
+    assert scheduled_job_repository.jobs_by_id == {}
 
 
 def test_admin_cannot_delete_organization(client: TestClient) -> None:

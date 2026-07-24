@@ -124,6 +124,11 @@ class InMemoryWorkflowRepository(WorkflowRepository):
     async def delete(self, workflow_id: str) -> None:
         self.workflows_by_id.pop(workflow_id, None)
 
+    async def delete_by_organization(self, organization_id: str) -> None:
+        for workflow_id, workflow in list(self.workflows_by_id.items()):
+            if workflow.organization_id == organization_id:
+                self.workflows_by_id.pop(workflow_id)
+
 
 class InMemoryWorkflowInstanceRepository(WorkflowInstanceRepository):
     def __init__(self) -> None:
@@ -176,6 +181,11 @@ class InMemoryWorkflowInstanceRepository(WorkflowInstanceRepository):
         self.instances_by_id[instance.id] = instance
         return instance
 
+    async def delete_by_organization(self, organization_id: str) -> None:
+        for instance_id, instance in list(self.instances_by_id.items()):
+            if instance.organization_id == organization_id:
+                self.instances_by_id.pop(instance_id)
+
 
 class InMemoryInstanceEventRepository(InstanceEventRepository):
     def __init__(self) -> None:
@@ -187,6 +197,9 @@ class InMemoryInstanceEventRepository(InstanceEventRepository):
 
     async def list_by_instance(self, instance_id: str) -> list[InstanceEvent]:
         return [event for event in self.events if event.instance_id == instance_id]
+
+    async def delete_by_organization(self, organization_id: str) -> None:
+        self.events = [event for event in self.events if event.organization_id != organization_id]
 
 
 class InMemoryTaskRepository(TaskRepository):
@@ -251,6 +264,11 @@ class InMemoryTaskRepository(TaskRepository):
         self.tasks_by_id[task.id] = task
         return task
 
+    async def delete_by_organization(self, organization_id: str) -> None:
+        for task_id, task in list(self.tasks_by_id.items()):
+            if task.organization_id == organization_id:
+                self.tasks_by_id.pop(task_id)
+
 
 class InMemoryScheduledJobRepository(ScheduledJobRepository):
     def __init__(self) -> None:
@@ -276,3 +294,8 @@ class InMemoryScheduledJobRepository(ScheduledJobRepository):
     async def update(self, job: ScheduledJob) -> ScheduledJob:
         self.jobs_by_id[job.id] = job
         return job
+
+    async def delete_by_organization(self, organization_id: str) -> None:
+        for job_id, job in list(self.jobs_by_id.items()):
+            if job.organization_id == organization_id:
+                self.jobs_by_id.pop(job_id)

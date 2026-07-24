@@ -131,9 +131,22 @@ async def delete_organization(
     current_user: Annotated[User, Depends(current_user_dependency)],
     organizations: Annotated[OrganizationRepository, Depends(organization_repository_dependency)],
     members: Annotated[OrganizationMemberRepository, Depends(organization_member_repository_dependency)],
+    workflows: Annotated[WorkflowRepository, Depends(workflow_repository_dependency)],
+    instances: Annotated[WorkflowInstanceRepository, Depends(workflow_instance_repository_dependency)],
+    events: Annotated[InstanceEventRepository, Depends(instance_event_repository_dependency)],
+    tasks: Annotated[TaskRepository, Depends(task_repository_dependency)],
+    jobs: Annotated[ScheduledJobRepository, Depends(scheduled_job_repository_dependency)],
 ) -> None:
     try:
-        await OrganizationService(organizations, members).delete(organization_id, current_user)
+        await OrganizationService(organizations, members).delete(
+            organization_id,
+            current_user,
+            workflows,
+            instances,
+            events,
+            tasks,
+            jobs,
+        )
     except OrganizationNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
