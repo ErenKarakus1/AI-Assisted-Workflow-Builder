@@ -1,7 +1,7 @@
 # AI-Assisted Workflow Builder
 
 [![CI](https://github.com/ErenKarakus1/AI-Assisted-Workflow-Builder/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ErenKarakus1/AI-Assisted-Workflow-Builder/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-61%20passing-brightgreen?style=flat)
+![Tests](https://img.shields.io/badge/tests-62%20passing-brightgreen?style=flat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat&logo=fastapi&logoColor=white)
@@ -91,7 +91,7 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 * Redis-backed rate limiting
 * Optional AI-assisted workflow drafting and analysis
 * Dockerized local setup
-* 61 passing backend tests
+* 62 passing backend tests
 
 ## How It Works
 
@@ -150,11 +150,12 @@ Approval tasks can be assigned to:
 
 * A specific user
 * A specific organization role
-* Owners
-* Administrators
+* Owner or Admin
 * Any organization member
 
 Owners and administrators can view organization tasks for oversight. However, every approval or rejection is still authorized by the backend against the task assignment.
+
+Deleting an organization is owner-only and removes the organization, members, workflows, runs, tasks, events, and scheduled jobs for that organization.
 
 ## Workflow Runs and Tasks
 
@@ -546,7 +547,7 @@ Open:
 
 ### Backend tests
 
-The backend test suite currently contains **61 passing tests**.
+The backend test suite currently contains **62 passing tests**.
 
 ```bash
 cd backend
