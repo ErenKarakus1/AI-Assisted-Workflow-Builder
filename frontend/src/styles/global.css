@@ -1094,6 +1094,45 @@ code {
   font-size: 0.78rem;
 }
 
+.not-found-page {
+  display: grid;
+  min-height: calc(100vh - 80px);
+  place-items: center;
+}
+
+.not-found-card {
+  display: grid;
+  gap: 14px;
+  max-width: 460px;
+  text-align: center;
+  border: 1px solid #dce3ed;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgb(22 34 51 / 9%);
+  padding: 40px;
+}
+
+.not-found-card span {
+  color: #2f6fed;
+  font-size: 0.85rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.not-found-card h2 {
+  margin: 0;
+  color: #172033;
+}
+
+.not-found-card p {
+  margin: 0;
+  color: #526173;
+}
+
+.not-found-card .button {
+  justify-self: center;
+}
+
 @media (max-width: 760px) {
   .layout {
     grid-template-columns: 1fr;

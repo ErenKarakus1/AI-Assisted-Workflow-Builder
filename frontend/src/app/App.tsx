@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "../components/layout/AppLayout";
 import { LoginPage } from "../features/auth/LoginPage";
@@ -10,6 +10,7 @@ import { RunsPage } from "../features/runs/RunsPage";
 import { TasksPage } from "../features/tasks/TasksPage";
 import { WorkflowDetailPage } from "../features/workflows/WorkflowDetailPage";
 import { WorkflowsPage } from "../features/workflows/WorkflowsPage";
+import { NotFoundPage } from "../routes/NotFoundPage";
 import { ProtectedRoute } from "../routes/ProtectedRoute";
 
 export function App() {
@@ -26,9 +27,9 @@ export function App() {
             <Route path="/runs" element={<RunsPage />} />
             <Route path="/workflows/:organizationId/:workflowId" element={<WorkflowDetailPage />} />
             <Route path="/tasks" element={<TasksPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
   );
