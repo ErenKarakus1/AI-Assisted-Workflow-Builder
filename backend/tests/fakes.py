@@ -213,16 +213,6 @@ class InMemoryTaskRepository(TaskRepository):
     async def get_by_id(self, task_id: str) -> Task | None:
         return self.tasks_by_id.get(task_id)
 
-    async def get_pending_by_instance_and_node(self, instance_id: str, node_id: str) -> Task | None:
-        for task in self.tasks_by_id.values():
-            if (
-                task.instance_id == instance_id
-                and task.node_id == node_id
-                and task.status == TaskStatus.PENDING
-            ):
-                return task
-        return None
-
     async def list_by_organization(
         self,
         organization_id: str,

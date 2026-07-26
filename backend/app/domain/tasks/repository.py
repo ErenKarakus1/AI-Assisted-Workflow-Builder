@@ -16,10 +16,6 @@ class TaskRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_pending_by_instance_and_node(self, instance_id: str, node_id: str) -> Task | None:
-        raise NotImplementedError
-
-    @abstractmethod
     async def list_by_organization(
         self,
         organization_id: str,
@@ -57,12 +53,6 @@ class MongoTaskRepository(TaskRepository):
 
     async def get_by_id(self, task_id: str) -> Task | None:
         document = await self.collection.find_one({"id": task_id})
-        return Task(**document) if document else None
-
-    async def get_pending_by_instance_and_node(self, instance_id: str, node_id: str) -> Task | None:
-        document = await self.collection.find_one(
-            {"instance_id": instance_id, "node_id": node_id, "status": TaskStatus.PENDING}
-        )
         return Task(**document) if document else None
 
     async def list_by_organization(
