@@ -305,6 +305,18 @@ export function WorkflowDetailPage() {
     );
   }
 
+  if (isForbiddenError(workflowQuery.error)) {
+    return (
+      <NotFoundPage
+        code="403"
+        title="You do not have access to this workflow"
+        description="This workflow may belong to another organization, or your membership may have been removed."
+        actionLabel="Back to workflows"
+        actionTo="/workflows"
+      />
+    );
+  }
+
   return (
     <section className="page-stack">
       <div className="page-header">
@@ -1023,6 +1035,15 @@ function isNotFoundError(error: unknown): boolean {
     error !== null &&
     "status" in error &&
     (error as { status?: unknown }).status === 404
+  );
+}
+
+function isForbiddenError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    (error as { status?: unknown }).status === 403
   );
 }
 

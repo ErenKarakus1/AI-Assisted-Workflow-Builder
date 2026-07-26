@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 type Props = {
+  code?: string;
   title?: string;
   description?: string;
   actionLabel?: string;
@@ -8,6 +9,7 @@ type Props = {
 };
 
 export function NotFoundPage({
+  code = "404",
   title = "Page not found",
   description = "The page you tried to open does not exist, or the link may be outdated.",
   actionLabel = "Go to dashboard",
@@ -16,7 +18,7 @@ export function NotFoundPage({
   return (
     <section className="not-found-page">
       <div className="not-found-card">
-        <span>404</span>
+        <span>{code}</span>
         <h2>{title}</h2>
         <p>{description}</p>
         <Link className="button" to={actionTo}>
