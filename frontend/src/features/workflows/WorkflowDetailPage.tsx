@@ -17,6 +17,7 @@ import {
   validateWorkflowDraft,
 } from "../../api/workflows";
 import { errorMessage } from "../../lib/errors";
+import { NotFoundPage } from "../../routes/NotFoundPage";
 import type {
   InstanceEvent,
   OrganizationMember,
@@ -42,10 +43,12 @@ export function WorkflowDetailPage() {
   const [aiDraft, setAiDraft] = useState<WorkflowAIGenerateResult | null>(null);
   const [useCurrentGraphForAI, setUseCurrentGraphForAI] = useState(false);
   const [currentGraph, setCurrentGraph] = useState<{ nodes: WorkflowNode[]; edges: WorkflowEdge[] } | null>(null);
+  const [instanceNotice, setInstanceNotice] = useState<string | null>(null);
   const workflowQuery = useQuery({
     queryKey: ["workflow", organizationId, workflowId],
     queryFn: () => getWorkflow(organizationId, workflowId),
     enabled: Boolean(organizationId && workflowId),
+    retry: (_, error) => !isNotFoundError(error),
   });
   const instancesQuery = useQuery({
     queryKey: ["workflow-instances", organizationId, workflowId],
@@ -162,6 +165,7 @@ export function WorkflowDetailPage() {
   useAutoResetMutation(startInstanceMutation.isError, startInstanceMutation.reset);
   useAutoResetMutation(Boolean(validateMutation.data?.is_valid), validateMutation.reset);
   useAutoResetMutation(Boolean(validateDraftMutation.data?.is_valid), validateDraftMutation.reset);
+  useAutoResetText(instanceNotice, () => setInstanceNotice(null));
 
   const resetValidate = validateMutation.reset;
   const resetValidateDraft = validateDraftMutation.reset;
@@ -209,6 +213,24 @@ export function WorkflowDetailPage() {
     setSelectedInstanceId(instanceId);
   }, [searchParams]);
 
+  useEffect(() => {
+    const instanceId = searchParams.get("instance");
+    if (!instanceId || instancesQuery.isLoading || instancesQuery.isError || !instancesQuery.data) {
+      return;
+    }
+    if (instancesQuery.data.some((instance) => instance.id === instanceId)) {
+      return;
+    }
+
+    setSelectedInstanceId(null);
+    setInstanceNotice("That workflow run could not be found, so the current graph is shown instead.");
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("instance");
+      return next;
+    }, { replace: true });
+  }, [instancesQuery.data, instancesQuery.isError, instancesQuery.isLoading, searchParams, setSearchParams]);
+
   const selectedOrganization = organizationsQuery.data?.find((organization) => organization.id === organizationId);
   const canManageWorkflow =
     selectedOrganization?.role === "owner" || selectedOrganization?.role === "admin";
@@ -245,6 +267,7 @@ export function WorkflowDetailPage() {
     !selectedInstance &&
     aiStatusQuery.data?.configured !== false &&
     aiPrompt.trim().length >= 8;
+
   const copySelectedSnapshotToDraft = useCallback(() => {
   if (!selectedInstance || !hasInstanceGraphSnapshot) {
     return;
@@ -271,6 +294,17 @@ export function WorkflowDetailPage() {
   );
 }, [hasInstanceGraphSnapshot, saveMutation, selectedInstance]);
 
+  if (isNotFoundError(workflowQuery.error)) {
+    return (
+      <NotFoundPage
+        title="Workflow not found"
+        description="This workflow may have been deleted, or you may not have access to it anymore."
+        actionLabel="Back to workflows"
+        actionTo="/workflows"
+      />
+    );
+  }
+
   return (
     <section className="page-stack">
       <div className="page-header">
@@ -285,6 +319,11 @@ export function WorkflowDetailPage() {
 
       {workflowQuery.isLoading ? <p className="muted">Loading...</p> : null}
       {workflowQuery.isError ? <p className="form-error">Could not load workflow.</p> : null}
+      {instanceNotice ? (
+        <p className="warning-panel">
+          <strong>{instanceNotice}</strong>
+        </p>
+      ) : null}
 
       {workflow && displayWorkflow ? (
         <>
@@ -978,6 +1017,15 @@ function graphSnapshotFingerprint(graph: { nodes: WorkflowNode[]; edges: Workflo
   return JSON.stringify(graph);
 }
 
+function isNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    (error as { status?: unknown }).status === 404
+  );
+}
+
 function parseJsonObjectError(value: string): string | null {
   try {
     parseJsonObject(value);
@@ -1013,4 +1061,15 @@ function useAutoResetMutation(shouldReset: boolean, reset: () => void) {
     const timeoutId = window.setTimeout(reset, 5000);
     return () => window.clearTimeout(timeoutId);
   }, [reset, shouldReset]);
+}
+
+function useAutoResetText(value: string | null, reset: () => void) {
+  useEffect(() => {
+    if (!value) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(reset, 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [reset, value]);
 }
