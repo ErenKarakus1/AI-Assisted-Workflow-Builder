@@ -48,7 +48,7 @@ export function WorkflowDetailPage() {
     queryKey: ["workflow", organizationId, workflowId],
     queryFn: () => getWorkflow(organizationId, workflowId),
     enabled: Boolean(organizationId && workflowId),
-    retry: (_, error) => !isNotFoundError(error),
+    retry: (_, error) => !isNotFoundError(error) && !isForbiddenError(error),
   });
   const instancesQuery = useQuery({
     queryKey: ["workflow-instances", organizationId, workflowId],
