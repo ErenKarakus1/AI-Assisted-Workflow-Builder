@@ -660,8 +660,11 @@ Redis-backed fixed-window counters protect sensitive or resource-intensive endpo
 * Sliding-window or token-bucket rate limiting
 * Message-broker-based delayed job processing
 * Workflow version management
+* Approval deadlines, reminders, escalations, and configurable self-approval rules
+* Stored AI-generated workflow documentation and node-linked AI findings
 * Email or webhook notifications
 * Additional workflow node types
+* Scheduled-job retry and lock-expiry recovery
 * Production deployment configuration
 * Metrics, tracing, and structured monitoring
 
