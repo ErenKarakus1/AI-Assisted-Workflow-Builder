@@ -21,6 +21,8 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 
 [![Watch the project demo](https://img.youtube.com/vi/j4gvn9GqDJk/maxresdefault.jpg)](https://youtu.be/j4gvn9GqDJk)
 
+▶ **Click the image above to play the demo video**
+
 ## Table of Contents
 
 - [Demo](#demo)
