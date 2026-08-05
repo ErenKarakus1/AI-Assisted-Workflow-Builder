@@ -25,7 +25,7 @@ Users can design workflows with start, condition, approval, delay, and end nodes
 
 ## Table of Contents
 
-- [Demo](#demo)
+- [Demo Video](#demo-video)
 - [Tech Stack](#tech-stack)
 - [Features](#features)
 - [How It Works](#how-it-works)
